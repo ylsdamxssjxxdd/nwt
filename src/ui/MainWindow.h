@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RoleSelectionDialog.h"
+#include "ShareCenterDialog.h"
 #include "core/ChatController.h"
 
 #include <QFrame>
@@ -8,6 +10,7 @@
 #include <QListView>
 #include <QMainWindow>
 #include <QPointer>
+#include <QHash>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QTextEdit>
@@ -37,7 +40,7 @@ private slots:
      * \param peer 消息来源联系人信息。
      * \param text 消息正文。
      */
-    void appendMessage(const PeerInfo &peer, const QString &text);
+    void appendMessage(const PeerInfo &peer, const QString &roleName, const QString &text);
     /*!
      * \brief 在状态栏区域展示提示。
      * \param text 要展示的文字。
@@ -47,6 +50,17 @@ private slots:
     void handleAddSubnet();
     /*! \brief 打开设置中心。 */
     void openSettingsDialog();
+    /*! \brief 选择当前发言角色。 */
+    void chooseRole();
+    /*! \brief 发送文件。 */
+    void handleSendFile();
+    /*! \brief 收到文件后的反馈。 */
+    void handleFileReceived(const PeerInfo &peer, const QString &roleName, const QString &fileName,
+                            const QString &path);
+    /*! \brief 更新远程共享目录。 */
+    void handleShareCatalog(const QString &peerId, const QList<SharedFileInfo> &files);
+    /*! \brief 打开共享中心。 */
+    void openShareCenter();
 
 private:
     /*! \brief 创建窗口整体结构。 */
@@ -75,6 +89,8 @@ private:
     void setActiveTab(int index);
     /*! \brief 根据联系人数量切换占位提示。 */
     void updatePeerPlaceholder();
+    /*! \brief 刷新头像区的角色信息。 */
+    void refreshProfileCard();
 
     ChatController *m_controller = nullptr;
     QWidget *m_contactPanel = nullptr;
@@ -89,8 +105,13 @@ private:
     QLineEdit *m_input = nullptr;
     QPushButton *m_sendButton = nullptr;
     QPushButton *m_addSubnetButton = nullptr;
+    QPushButton *m_fileButton = nullptr;
+    QPushButton *m_shareButton = nullptr;
     QLabel *m_statusLabel = nullptr;
     QVector<QToolButton *> m_tabButtons;
     QString m_currentPeerId;
     QPointer<SettingsDialog> m_settingsDialog;
+    QPointer<RoleSelectionDialog> m_roleDialog;
+    QPointer<ShareCenterDialog> m_shareDialog;
+    QHash<QString, QList<SharedFileInfo>> m_remoteShares;
 };

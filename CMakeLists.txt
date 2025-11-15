@@ -18,6 +18,8 @@ set(SOURCES
     src/core/ChatController.cpp
     src/ui/MainWindow.cpp
     src/ui/SettingsDialog.cpp
+    src/ui/RoleSelectionDialog.cpp
+    src/ui/ShareCenterDialog.cpp
 )
 
 add_executable(nwt ${SOURCES})

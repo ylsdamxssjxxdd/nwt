@@ -5,6 +5,7 @@
 #include <QHash>
 #include <QObject>
 #include <QPointer>
+#include <QJsonObject>
 #include <QTcpServer>
 #include <QTcpSocket>
 
@@ -17,10 +18,12 @@ public:
     bool startListening(quint16 port);
     void setLocalPeerId(const QString &peerId);
     void setLocalDisplayName(const QString &name);
-    void sendChatMessage(const PeerInfo &peer, const QString &text);
+    void sendChatMessage(const PeerInfo &peer, const QString &text, const QString &roleId, const QString &roleName);
+    void sendFilePayload(const PeerInfo &peer, const QString &roleId, const QString &roleName, const QJsonObject &fileInfo);
+    void sendSharePayload(const PeerInfo &peer, const QJsonObject &payload);
 
 signals:
-    void messageReceived(const PeerInfo &peer, const QString &text);
+    void messageReceived(const PeerInfo &peer, const QJsonObject &payload);
     void routerWarning(const QString &message);
 
 private slots:
@@ -30,6 +33,7 @@ private slots:
 private:
     QTcpSocket *ensureSession(const PeerInfo &peer);
     void attachSocketSignals(QTcpSocket *socket);
+    void sendJson(QTcpSocket *socket, const QJsonObject &object);
     void cleanupSocket(QTcpSocket *socket);
 
     QTcpServer m_server;

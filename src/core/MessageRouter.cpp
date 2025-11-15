@@ -29,7 +29,8 @@ void MessageRouter::setLocalDisplayName(const QString &name) {
     m_localDisplayName = name;
 }
 
-void MessageRouter::sendChatMessage(const PeerInfo &peer, const QString &text) {
+void MessageRouter::sendChatMessage(const PeerInfo &peer, const QString &text, const QString &roleId,
+                                    const QString &roleName) {
     if (text.isEmpty()) {
         return;
     }
@@ -41,15 +42,48 @@ void MessageRouter::sendChatMessage(const PeerInfo &peer, const QString &text) {
     }
 
     QJsonObject obj{
-        {"type", QStringLiteral("chat")},
-        {"id", m_localPeerId},
-        {"displayName", m_localDisplayName},
-        {"timestamp", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)},
-        {"text", text}
+        {QStringLiteral("type"), QStringLiteral("chat")},
+        {QStringLiteral("id"), m_localPeerId},
+        {QStringLiteral("displayName"), m_localDisplayName},
+        {QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODate)},
+        {QStringLiteral("text"), text},
+        {QStringLiteral("roleId"), roleId},
+        {QStringLiteral("roleName"), roleName}
     };
-    QByteArray payload = QJsonDocument(obj).toJson(QJsonDocument::Compact);
-    payload.append('\n');
-    socket->write(payload);
+    sendJson(socket, obj);
+}
+
+void MessageRouter::sendFilePayload(const PeerInfo &peer, const QString &roleId, const QString &roleName,
+                                    const QJsonObject &fileInfo) {
+    QTcpSocket *socket = ensureSession(peer);
+    if (!socket) {
+        emit routerWarning(tr("无法与 %1 建立文件会话").arg(peer.displayName));
+        return;
+    }
+
+    QJsonObject payload = fileInfo;
+    payload.insert(QStringLiteral("type"), QStringLiteral("file"));
+    payload.insert(QStringLiteral("id"), m_localPeerId);
+    payload.insert(QStringLiteral("displayName"), m_localDisplayName);
+    payload.insert(QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    payload.insert(QStringLiteral("roleId"), roleId);
+    payload.insert(QStringLiteral("roleName"), roleName);
+    sendJson(socket, payload);
+}
+
+void MessageRouter::sendSharePayload(const PeerInfo &peer, const QJsonObject &payload) {
+    QTcpSocket *socket = ensureSession(peer);
+    if (!socket) {
+        emit routerWarning(tr("无法向 %1 发送共享数据").arg(peer.displayName));
+        return;
+    }
+
+    QJsonObject object = payload;
+    object.insert(QStringLiteral("type"), object.value(QStringLiteral("type")).toString());
+    object.insert(QStringLiteral("id"), m_localPeerId);
+    object.insert(QStringLiteral("displayName"), m_localDisplayName);
+    object.insert(QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    sendJson(socket, object);
 }
 
 void MessageRouter::handleNewConnection() {
@@ -86,8 +120,6 @@ void MessageRouter::readSocket() {
         peer.address = socket->peerAddress();
         peer.listenPort = static_cast<quint16>(socket->peerPort());
         peer.lastSeen = QDateTime::currentDateTimeUtc();
-        const QString text = obj.value(QStringLiteral("text")).toString();
-
         if (!peer.id.isEmpty()) {
             m_socketToPeer.insert(socket, peer.id);
             if (!m_peerSessions.contains(peer.id)) {
@@ -95,7 +127,7 @@ void MessageRouter::readSocket() {
             }
         }
 
-        emit messageReceived(peer, text);
+        emit messageReceived(peer, obj);
         newline = buffer.indexOf('\n');
     }
 }
@@ -124,6 +156,15 @@ void MessageRouter::attachSocketSignals(QTcpSocket *socket) {
         cleanupSocket(socket);
         socket->deleteLater();
     });
+}
+
+void MessageRouter::sendJson(QTcpSocket *socket, const QJsonObject &object) {
+    if (!socket) {
+        return;
+    }
+    QByteArray payload = QJsonDocument(object).toJson(QJsonDocument::Compact);
+    payload.append('\n');
+    socket->write(payload);
 }
 
 void MessageRouter::cleanupSocket(QTcpSocket *socket) {

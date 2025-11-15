@@ -1,8 +1,10 @@
 #include "MainWindow.h"
 #include "SettingsDialog.h"
+#include "ShareCenterDialog.h"
 
 #include <QAbstractItemView>
 #include <QAbstractSocket>
+#include <QFileDialog>
 #include <QDateTime>
 #include <QHBoxLayout>
 #include <QHostAddress>
@@ -48,9 +50,14 @@ MainWindow::MainWindow(ChatController *controller, QWidget *parent)
 
     connect(m_sendButton, &QPushButton::clicked, this, &MainWindow::handleSend);
     connect(m_input, &QLineEdit::returnPressed, this, &MainWindow::handleSend);
+    connect(m_fileButton, &QPushButton::clicked, this, &MainWindow::handleSendFile);
+    connect(m_shareButton, &QPushButton::clicked, this, &MainWindow::openShareCenter);
     connect(m_controller, &ChatController::chatMessageReceived, this, &MainWindow::appendMessage);
+    connect(m_controller, &ChatController::fileReceived, this, &MainWindow::handleFileReceived);
+    connect(m_controller, &ChatController::shareCatalogReceived, this, &MainWindow::handleShareCatalog);
     connect(m_controller, &ChatController::statusInfo, this, &MainWindow::showStatus);
     connect(m_controller, &ChatController::controllerWarning, this, &MainWindow::showStatus);
+    connect(m_controller, &ChatController::roleChanged, this, [this]() { refreshProfileCard(); });
     connect(m_addSubnetButton, &QPushButton::clicked, this, &MainWindow::handleAddSubnet);
 
     updatePeerPlaceholder();
@@ -71,6 +78,7 @@ void MainWindow::setupUi() {
     setCentralWidget(central);
     setMinimumSize(960, 600);
     setWindowTitle(tr("内网通 - 轻松联络每一位同事"));
+    refreshProfileCard();
 }
 
 QWidget *MainWindow::buildLeftPanel(QWidget *parent) {
@@ -128,6 +136,14 @@ QWidget *MainWindow::buildChatPanel(QWidget *parent) {
     m_input = new QLineEdit(inputCard);
     m_input->setPlaceholderText(tr("输入消息内容，按回车发送"));
     inputLayout->addWidget(m_input, 1);
+
+    m_fileButton = new QPushButton(tr("发文件"), inputCard);
+    m_fileButton->setObjectName("sendButton");
+    inputLayout->addWidget(m_fileButton);
+
+    m_shareButton = new QPushButton(tr("共享"), inputCard);
+    m_shareButton->setObjectName("actionButton");
+    inputLayout->addWidget(m_shareButton);
 
     m_sendButton = new QPushButton(tr("发送"), inputCard);
     m_sendButton->setObjectName("sendButton");
@@ -261,7 +277,8 @@ QWidget *MainWindow::buildProfileCard(QWidget *parent) {
 
     auto *nameRow = new QHBoxLayout();
     nameRow->setSpacing(6);
-    m_profileName = new QLabel(tr("EVA-0"), frame);
+    const QString defaultName = m_controller ? m_controller->localDisplayName() : tr("EVA-0");
+    m_profileName = new QLabel(defaultName, frame);
     m_profileName->setObjectName("profileName");
     nameRow->addWidget(m_profileName);
 
@@ -277,18 +294,22 @@ QWidget *MainWindow::buildProfileCard(QWidget *parent) {
     nameRow->addStretch();
     infoLayout->addLayout(nameRow);
 
-    m_profileSignature = new QLabel(tr("编辑个性签名"), frame);
+    const QString signatureText = m_controller ? m_controller->signatureText() : tr("编辑个性签名");
+    m_profileSignature = new QLabel(signatureText, frame);
     m_profileSignature->setObjectName("profileSignature");
     infoLayout->addWidget(m_profileSignature);
 
     auto *quickRow = new QHBoxLayout();
     quickRow->setSpacing(8);
-    const QStringList quickTags = {tr("淘"), tr("目"), tr("邮"), tr("+")};
+    const QStringList quickTags = {tr("淘"), tr("目"), tr("邮")};
     for (const QString &tag : quickTags) {
         auto *label = new QLabel(tag, frame);
         label->setObjectName("quickBadge");
         quickRow->addWidget(label);
     }
+    auto *roleButton = new QPushButton(tr("切换角色"), frame);
+    roleButton->setObjectName("actionButton");
+    quickRow->addWidget(roleButton);
     quickRow->addStretch();
     infoLayout->addLayout(quickRow);
 
@@ -296,6 +317,7 @@ QWidget *MainWindow::buildProfileCard(QWidget *parent) {
 
     connect(statusButton, &QToolButton::clicked, this,
             [this]() { showStatus(tr("当前为在线状态，可在此切换。")); });
+    connect(roleButton, &QPushButton::clicked, this, &MainWindow::chooseRole);
 
     return frame;
 }
@@ -602,6 +624,24 @@ void MainWindow::updatePeerPlaceholder() {
     m_peerStack->setCurrentWidget(hasPeers ? static_cast<QWidget *>(m_peerList) : m_emptyState);
 }
 
+void MainWindow::refreshProfileCard() {
+    if (!m_controller) {
+        return;
+    }
+    const RoleProfile role = m_controller->activeRole();
+    const QString displayName = role.name.isEmpty() ? m_controller->localDisplayName() : role.name;
+    if (m_profileName) {
+        m_profileName->setText(displayName);
+    }
+    if (m_profileSignature) {
+        m_profileSignature->setText(m_controller->signatureText());
+    }
+    if (m_avatarLabel) {
+        const QString letter = role.avatarLetter.isEmpty() ? displayName.left(1).toUpper() : role.avatarLetter;
+        m_avatarLabel->setText(letter);
+    }
+}
+
 void MainWindow::handleSend() {
     if (!m_controller) {
         return;
@@ -618,8 +658,35 @@ void MainWindow::handleSend() {
 
     m_controller->sendMessageToPeer(m_currentPeerId, text);
     const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
-    m_chatLog->append(QStringLiteral("[%1] 我: %2").arg(timestamp, text));
+    const RoleProfile role = m_controller->activeRole();
+    const QString roleDisplay = role.name.isEmpty() ? tr("我") : role.name;
+    m_chatLog->append(QStringLiteral("[%1] %2: %3").arg(timestamp, roleDisplay, text));
     m_input->clear();
+}
+
+void MainWindow::handleSendFile() {
+    if (!m_controller) {
+        return;
+    }
+    if (m_currentPeerId.isEmpty()) {
+        showStatus(tr("请先选择一个联系人"));
+        return;
+    }
+    const QString filePath = QFileDialog::getOpenFileName(this, tr("选择要发送的文件"));
+    if (filePath.isEmpty()) {
+        return;
+    }
+    m_controller->sendFileToPeer(m_currentPeerId, filePath);
+}
+
+void MainWindow::chooseRole() {
+    if (!m_controller) {
+        return;
+    }
+    RoleSelectionDialog dialog(m_controller, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        refreshProfileCard();
+    }
 }
 
 void MainWindow::handlePeerSelection(const QModelIndex &index) {
@@ -630,12 +697,17 @@ void MainWindow::handlePeerSelection(const QModelIndex &index) {
     m_currentPeerId = index.data(PeerDirectory::IdRole).toString();
     const QString display = index.data(Qt::DisplayRole).toString();
     showStatus(tr("已选择 %1").arg(display));
+    if (m_shareDialog) {
+        m_shareDialog->setPeerId(m_currentPeerId);
+        m_shareDialog->setRemoteEntries(m_remoteShares.value(m_currentPeerId));
+    }
 }
 
-void MainWindow::appendMessage(const PeerInfo &peer, const QString &text) {
+void MainWindow::appendMessage(const PeerInfo &peer, const QString &roleName, const QString &text) {
     const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
     const QString label = peer.displayName.isEmpty() ? peer.id : peer.displayName;
-    m_chatLog->append(QStringLiteral("[%1] %2: %3").arg(timestamp, label, text));
+    const QString speaker = roleName.isEmpty() ? label : QStringLiteral("%1（%2）").arg(label, roleName);
+    m_chatLog->append(QStringLiteral("[%1] %2: %3").arg(timestamp, speaker, text));
 }
 
 void MainWindow::showStatus(const QString &text) {
@@ -646,11 +718,41 @@ void MainWindow::showStatus(const QString &text) {
 
 void MainWindow::openSettingsDialog() {
     if (!m_settingsDialog) {
-        m_settingsDialog = new SettingsDialog(this);
+        m_settingsDialog = new SettingsDialog(m_controller, this);
     }
     m_settingsDialog->show();
     m_settingsDialog->raise();
     m_settingsDialog->activateWindow();
+}
+
+void MainWindow::handleFileReceived(const PeerInfo &peer, const QString &roleName, const QString &fileName,
+                                    const QString &path) {
+    const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
+    const QString sender = roleName.isEmpty() ? peer.displayName : QStringLiteral("%1（%2）").arg(peer.displayName, roleName);
+    m_chatLog->append(QStringLiteral("[%1] %2 发送文件 %3，已保存到 %4").arg(timestamp, sender, fileName, path));
+}
+
+void MainWindow::handleShareCatalog(const QString &peerId, const QList<SharedFileInfo> &files) {
+    m_remoteShares.insert(peerId, files);
+    if (m_shareDialog && m_shareDialog->isVisible() && peerId == m_currentPeerId) {
+        m_shareDialog->setRemoteEntries(files);
+    }
+    const QString peerName = peerId == m_currentPeerId ? tr("当前联系人") : peerId;
+    m_chatLog->append(tr("收到 %1 的共享目录，共 %2 个文件。").arg(peerName).arg(files.size()));
+}
+
+void MainWindow::openShareCenter() {
+    if (!m_controller) {
+        return;
+    }
+    if (!m_shareDialog) {
+        m_shareDialog = new ShareCenterDialog(m_controller, this);
+    }
+    m_shareDialog->setPeerId(m_currentPeerId);
+    m_shareDialog->setRemoteEntries(m_remoteShares.value(m_currentPeerId));
+    m_shareDialog->show();
+    m_shareDialog->raise();
+    m_shareDialog->activateWindow();
 }
 
 void MainWindow::handleAddSubnet() {
