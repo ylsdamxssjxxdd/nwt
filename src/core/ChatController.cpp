@@ -200,6 +200,11 @@ ChatController::ChatController(QObject *parent) : QObject(parent) {
     connect(&m_router, &MessageRouter::messageReceived, this, &ChatController::handleRouterMessage);
 }
 
+ChatController::~ChatController() {
+    m_discovery.stop();
+    m_router.stop();
+}
+
 bool ChatController::initialize() {
     loadSettings();
     initializeRoles();

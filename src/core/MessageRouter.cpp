@@ -177,3 +177,19 @@ void MessageRouter::cleanupSocket(QTcpSocket *socket) {
     }
     m_pendingBuffers.remove(socket);
 }
+
+void MessageRouter::stop() {
+    if (m_server.isListening()) {
+        m_server.close();
+    }
+    const auto sockets = m_peerSessions.values();
+    for (QTcpSocket *socket : sockets) {
+        if (socket) {
+            socket->disconnectFromHost();
+            socket->deleteLater();
+        }
+    }
+    m_peerSessions.clear();
+    m_socketToPeer.clear();
+    m_pendingBuffers.clear();
+}

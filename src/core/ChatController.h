@@ -150,6 +150,7 @@ class ChatController : public QObject {
 
 public:
     explicit ChatController(QObject *parent = nullptr);
+    ~ChatController() override;
 
     bool initialize();
     PeerDirectory *peerDirectory();

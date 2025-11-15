@@ -19,6 +19,7 @@ public:
     void setSubnets(const QList<QPair<QHostAddress, int>> &subnets);
     void probeSubnet(const QHostAddress &network, int prefixLength);
     void announceOnline();
+    void stop();
 
 signals:
     void peerDiscovered(const PeerInfo &info);

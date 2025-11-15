@@ -21,6 +21,7 @@ public:
     void sendChatMessage(const PeerInfo &peer, const QString &text, const QString &roleId, const QString &roleName);
     void sendFilePayload(const PeerInfo &peer, const QString &roleId, const QString &roleName, const QJsonObject &fileInfo);
     void sendSharePayload(const PeerInfo &peer, const QJsonObject &payload);
+    void stop();
 
 signals:
     void messageReceived(const PeerInfo &peer, const QJsonObject &payload);

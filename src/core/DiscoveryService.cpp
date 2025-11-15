@@ -53,6 +53,16 @@ void DiscoveryService::announceOnline() {
     sendPacket("hello");
 }
 
+void DiscoveryService::stop() {
+    if (m_heartbeatTimer.isActive()) {
+        m_heartbeatTimer.stop();
+    }
+    disconnect(&m_socket, nullptr, this, nullptr);
+    if (m_socket.state() != QAbstractSocket::UnconnectedState) {
+        m_socket.close();
+    }
+}
+
 void DiscoveryService::readPendingDatagrams() {
     while (m_socket.hasPendingDatagrams()) {
         QByteArray payload;
