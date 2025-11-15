@@ -17,6 +17,7 @@ set(SOURCES
     src/core/MessageRouter.cpp
     src/core/ChatController.cpp
     src/ui/MainWindow.cpp
+    src/ui/SettingsDialog.cpp
 )
 
 add_executable(nwt ${SOURCES})

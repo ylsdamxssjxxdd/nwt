@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "SettingsDialog.h"
 
 #include <QAbstractItemView>
 #include <QAbstractSocket>
@@ -206,6 +207,11 @@ QWidget *MainWindow::buildTopBanner(QWidget *parent) {
     feedbackButton->setFlat(true);
     layout->addWidget(feedbackButton);
 
+    auto *settingsButton = new QToolButton(frame);
+    settingsButton->setObjectName("toolbarIcon");
+    settingsButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+    layout->addWidget(settingsButton);
+
     layout->addStretch();
 
     auto *themeButton = new QToolButton(frame);
@@ -225,6 +231,7 @@ QWidget *MainWindow::buildTopBanner(QWidget *parent) {
 
     connect(feedbackButton, &QPushButton::clicked, this,
             [this]() { showStatus(tr("反馈已记录，我们会尽快答复。")); });
+    connect(settingsButton, &QToolButton::clicked, this, &MainWindow::openSettingsDialog);
     connect(themeButton, &QToolButton::clicked, this,
             [this]() { showStatus(tr("主题商店功能开发中，敬请期待。")); });
     connect(minButton, &QToolButton::clicked, this, &MainWindow::showMinimized);
@@ -635,6 +642,15 @@ void MainWindow::showStatus(const QString &text) {
     if (m_statusLabel) {
         m_statusLabel->setText(text);
     }
+}
+
+void MainWindow::openSettingsDialog() {
+    if (!m_settingsDialog) {
+        m_settingsDialog = new SettingsDialog(this);
+    }
+    m_settingsDialog->show();
+    m_settingsDialog->raise();
+    m_settingsDialog->activateWindow();
 }
 
 void MainWindow::handleAddSubnet() {

@@ -7,11 +7,14 @@
 #include <QLineEdit>
 #include <QListView>
 #include <QMainWindow>
+#include <QPointer>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QTextEdit>
 #include <QToolButton>
 #include <QVector>
+
+class SettingsDialog;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -42,6 +45,8 @@ private slots:
     void showStatus(const QString &text);
     /*! \brief 弹出对话框以添加需要扫描的子网。 */
     void handleAddSubnet();
+    /*! \brief 打开设置中心。 */
+    void openSettingsDialog();
 
 private:
     /*! \brief 创建窗口整体结构。 */
@@ -87,4 +92,5 @@ private:
     QLabel *m_statusLabel = nullptr;
     QVector<QToolButton *> m_tabButtons;
     QString m_currentPeerId;
+    QPointer<SettingsDialog> m_settingsDialog;
 };
