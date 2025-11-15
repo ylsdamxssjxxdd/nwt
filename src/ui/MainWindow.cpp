@@ -1,20 +1,26 @@
-#include "MainWindow.h"
+﻿#include "MainWindow.h"
 #include "ProfileDialog.h"
 #include "SettingsDialog.h"
 #include "ShareCenterDialog.h"
 
 #include <QAbstractItemView>
 #include <QAbstractSocket>
+#include <QEvent>
 #include <QFileDialog>
 #include <QDateTime>
 #include <QHBoxLayout>
 #include <QHostAddress>
 #include <QInputDialog>
 #include <QItemSelectionModel>
+#include <QKeyEvent>
 #include <QPainter>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QSizePolicy>
 #include <QStringList>
 #include <QStyle>
+#include <QTextEdit>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 namespace {
@@ -51,7 +57,6 @@ MainWindow::MainWindow(ChatController *controller, QWidget *parent)
     connect(m_peerList, &QListView::clicked, this, &MainWindow::handlePeerSelection);
 
     connect(m_sendButton, &QPushButton::clicked, this, &MainWindow::handleSend);
-    connect(m_input, &QLineEdit::returnPressed, this, &MainWindow::handleSend);
     connect(m_fileButton, &QPushButton::clicked, this, &MainWindow::handleSendFile);
     connect(m_shareButton, &QPushButton::clicked, this, &MainWindow::openShareCenter);
     connect(m_controller, &ChatController::chatMessageReceived, this, &MainWindow::appendMessage);
@@ -109,105 +114,265 @@ QWidget *MainWindow::buildChatPanel(QWidget *parent) {
     panel->setObjectName("chatPanel");
 
     auto *layout = new QVBoxLayout(panel);
-    layout->setContentsMargins(24, 24, 24, 24);
-    layout->setSpacing(16);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
 
-    auto *titleRow = new QHBoxLayout();
-    auto *title = new QLabel(tr("对话区"), panel);
-    title->setObjectName("chatTitle");
-    titleRow->addWidget(title);
-    titleRow->addStretch();
+    auto *header = new QFrame(panel);
+    header->setObjectName("chatHeader");
+    auto *headerLayout = new QHBoxLayout(header);
+    headerLayout->setContentsMargins(24, 18, 24, 18);
+    headerLayout->setSpacing(16);
 
-    m_addSubnetButton = new QPushButton(tr("添加网段"), panel);
+    auto *headerInfo = new QVBoxLayout();
+    headerInfo->setContentsMargins(0, 0, 0, 0);
+    headerInfo->setSpacing(4);
+    m_chatNameLabel = new QLabel(tr("选择联系人"), header);
+    m_chatNameLabel->setObjectName("chatName");
+    headerInfo->addWidget(m_chatNameLabel);
+
+    m_chatPresenceLabel = new QLabel(tr("尚未建立连接"), header);
+    m_chatPresenceLabel->setObjectName("chatPresence");
+    headerInfo->addWidget(m_chatPresenceLabel);
+    headerLayout->addLayout(headerInfo);
+    headerLayout->addStretch();
+
+    auto buildHeaderAction = [header](QStyle::StandardPixmap icon, const QString &tooltip) {
+        auto *button = new QToolButton(header);
+        button->setObjectName("chatAction");
+        button->setIcon(header->style()->standardIcon(icon));
+        button->setToolTip(tooltip);
+        button->setAutoRaise(true);
+        return button;
+    };
+    headerLayout->addWidget(buildHeaderAction(QStyle::SP_ToolBarHorizontalExtensionButton, tr("语音通话")));
+    headerLayout->addWidget(buildHeaderAction(QStyle::SP_DialogYesButton, tr("视频通话")));
+
+    m_addSubnetButton = new QPushButton(tr("添加子网"), header);
     m_addSubnetButton->setObjectName("actionButton");
-    titleRow->addWidget(m_addSubnetButton);
-    layout->addLayout(titleRow);
+    headerLayout->addWidget(m_addSubnetButton);
+    layout->addWidget(header);
 
-    m_chatLog = new QTextEdit(panel);
-    m_chatLog->setObjectName("chatLog");
-    m_chatLog->setReadOnly(true);
-    m_chatLog->setPlaceholderText(tr("选择联系人后即可开始对话…"));
-    layout->addWidget(m_chatLog, 1);
+    auto *body = new QFrame(panel);
+    body->setObjectName("chatBody");
+    auto *bodyLayout = new QVBoxLayout(body);
+    bodyLayout->setContentsMargins(0, 0, 0, 0);
+    bodyLayout->setSpacing(0);
 
-    auto *inputCard = new QFrame(panel);
-    inputCard->setObjectName("inputCard");
-    auto *inputLayout = new QHBoxLayout(inputCard);
-    inputLayout->setContentsMargins(12, 8, 12, 8);
-    inputLayout->setSpacing(8);
+    m_messageScroll = new QScrollArea(body);
+    m_messageScroll->setObjectName("messageScroll");
+    m_messageScroll->setWidgetResizable(true);
+    m_messageScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    m_input = new QLineEdit(inputCard);
-    m_input->setPlaceholderText(tr("输入消息内容，按回车发送"));
-    inputLayout->addWidget(m_input, 1);
+    m_messageViewport = new QWidget(m_messageScroll);
+    m_messageViewport->setObjectName("messageViewport");
+    m_messageLayout = new QVBoxLayout(m_messageViewport);
+    m_messageLayout->setContentsMargins(32, 24, 32, 24);
+    m_messageLayout->setSpacing(12);
 
-    m_fileButton = new QPushButton(tr("发文件"), inputCard);
-    m_fileButton->setObjectName("sendButton");
-    inputLayout->addWidget(m_fileButton);
+    m_chatEmptyLabel = new QLabel(tr("选择联系人后即可开始对话…"), m_messageViewport);
+    m_chatEmptyLabel->setObjectName("chatEmpty");
+    m_chatEmptyLabel->setAlignment(Qt::AlignCenter);
+    m_chatEmptyLabel->setWordWrap(true);
+    m_messageLayout->addWidget(m_chatEmptyLabel, 0, Qt::AlignCenter);
+    m_messageLayout->addStretch(1);
 
-    m_shareButton = new QPushButton(tr("共享"), inputCard);
-    m_shareButton->setObjectName("actionButton");
-    inputLayout->addWidget(m_shareButton);
+    m_messageScroll->setWidget(m_messageViewport);
+    bodyLayout->addWidget(m_messageScroll);
+    layout->addWidget(body, 1);
 
-    m_sendButton = new QPushButton(tr("发送"), inputCard);
+    auto *inputArea = new QFrame(panel);
+    inputArea->setObjectName("chatInputArea");
+    auto *inputLayout = new QVBoxLayout(inputArea);
+    inputLayout->setContentsMargins(32, 16, 32, 16);
+    inputLayout->setSpacing(12);
+
+    auto *toolRow = new QHBoxLayout();
+    toolRow->setContentsMargins(0, 0, 0, 0);
+    toolRow->setSpacing(12);
+    auto buildToolButton = [inputArea](const QString &text) {
+        auto *btn = new QToolButton(inputArea);
+        btn->setObjectName("chatTool");
+        btn->setAutoRaise(true);
+        btn->setText(text);
+        return btn;
+    };
+    toolRow->addWidget(buildToolButton(tr("表情")));
+    toolRow->addWidget(buildToolButton(tr("收藏")));
+    toolRow->addWidget(buildToolButton(tr("截屏")));
+
+    m_fileButton = new QPushButton(tr("文件"), inputArea);
+    m_fileButton->setObjectName("chatToolButton");
+    m_fileButton->setFlat(true);
+    toolRow->addWidget(m_fileButton);
+
+    m_shareButton = new QPushButton(tr("共享"), inputArea);
+    m_shareButton->setObjectName("chatToolButton");
+    m_shareButton->setFlat(true);
+    toolRow->addWidget(m_shareButton);
+    toolRow->addStretch(1);
+    inputLayout->addLayout(toolRow);
+
+    m_inputEdit = new QTextEdit(inputArea);
+    m_inputEdit->setObjectName("chatInput");
+    m_inputEdit->setPlaceholderText(tr("Enter 发送，Shift+Enter 换行"));
+    m_inputEdit->setMinimumHeight(110);
+    m_inputEdit->setMaximumHeight(150);
+    m_inputEdit->installEventFilter(this);
+    inputLayout->addWidget(m_inputEdit);
+
+    auto *sendRow = new QHBoxLayout();
+    sendRow->setContentsMargins(0, 0, 0, 0);
+    sendRow->setSpacing(12);
+    sendRow->addStretch(1);
+    m_sendButton = new QPushButton(tr("发 送 (S)"), inputArea);
     m_sendButton->setObjectName("sendButton");
-    inputLayout->addWidget(m_sendButton);
-    layout->addWidget(inputCard);
+    sendRow->addWidget(m_sendButton);
+    inputLayout->addLayout(sendRow);
+    layout->addWidget(inputArea, 0);
 
-    m_statusLabel = new QLabel(tr("未连接"), panel);
+    auto *statusBar = new QFrame(panel);
+    statusBar->setObjectName("chatStatusBar");
+    auto *statusLayout = new QHBoxLayout(statusBar);
+    statusLayout->setContentsMargins(32, 8, 32, 8);
+    statusLayout->setSpacing(8);
+    m_statusLabel = new QLabel(tr("未连接"), statusBar);
     m_statusLabel->setObjectName("statusLabel");
-    layout->addWidget(m_statusLabel);
+    statusLayout->addWidget(m_statusLabel);
+    layout->addWidget(statusBar, 0);
 
     panel->setStyleSheet(R"(
         #chatPanel {
-            background: #ffffff;
+            background: #e8eaed;
         }
-        #chatTitle {
-            font-size: 18px;
-            color: #414d63;
+        #chatHeader {
+            background: #f5f6fa;
+            border-bottom: 1px solid #e2e6ef;
+        }
+        #chatName {
+            font-size: 20px;
             font-weight: 600;
+            color: #30343f;
         }
-        #chatLog {
-            border: 1px solid #d2e0f0;
-            border-radius: 12px;
-            background: #f7f9fd;
-            padding: 12px;
-            font-size: 14px;
-        }
-        #inputCard {
-            border: 1px solid #e0e0e0;
-            border-radius: 12px;
-            background: #fffefa;
-        }
-        #sendButton {
-            background: #1e8bcb;
-            color: #ffffff;
-            border: none;
-            border-radius: 8px;
-            padding: 8px 18px;
-            font-weight: 600;
-        }
-        #sendButton:hover {
-            background: #1674ac;
-        }
-        #statusLabel {
-            color: #888888;
+        #chatPresence {
             font-size: 12px;
+            color: #8a92a6;
+        }
+        #chatAction {
+            border: none;
+            padding: 6px;
+        }
+        #chatAction:hover {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
         }
         #actionButton {
             border: 1px solid #f4b552;
-            border-radius: 18px;
-            padding: 6px 16px;
+            border-radius: 16px;
+            padding: 6px 18px;
             background: #fff4d5;
             color: #c87900;
         }
         #actionButton:hover {
             background: #ffefd1;
         }
+        #chatBody {
+            background: #e8eaed;
+        }
+        #messageViewport {
+            background: #e8eaed;
+        }
+        #chatEmpty {
+            color: #a3a9b8;
+            font-size: 14px;
+        }
+        #timelineLabel {
+            color: #8a92a6;
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 4px 14px;
+            border-radius: 16px;
+        }
+        #bubblePeer {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e3e7ef;
+            padding: 0px;
+        }
+        #bubbleSelf {
+            background: #bdf8a8;
+            border-radius: 12px;
+            border: 1px solid #9ed58b;
+            padding: 0px;
+        }
+        #bubbleText {
+            font-size: 14px;
+            color: #2f3542;
+        }
+        #bubbleSender {
+            font-size: 12px;
+            color: #8a92a6;
+        }
+        #avatarPeer, #avatarSelf {
+            min-width: 40px;
+            min-height: 40px;
+            border-radius: 20px;
+            border: none;
+            background: #fff;
+            font-weight: 600;
+            color: #65708c;
+        }
+        #avatarSelf {
+            background: #7ac85c;
+            color: #ffffff;
+        }
+        #chatInputArea {
+            background: #ffffff;
+            border-top: 1px solid #dfe3eb;
+        }
+        #chatTool {
+            color: #5f6577;
+            font-size: 13px;
+        }
+        #chatToolButton {
+            border: none;
+            padding: 0 8px;
+            color: #4f576a;
+        }
+        #chatToolButton:hover,
+        #chatTool:hover {
+            color: #2c7dfa;
+        }
+        #chatInput {
+            border: 1px solid #dfe3eb;
+            border-radius: 12px;
+            background: #fbfbfc;
+            padding: 10px;
+            font-size: 14px;
+        }
+        #sendButton {
+            background: #1aad19;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 28px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        #sendButton:hover {
+            background: #17900f;
+        }
+        #chatStatusBar {
+            background: #f5f6fa;
+            border-top: 1px solid #e2e6ef;
+        }
+        #statusLabel {
+            color: #8a92a6;
+            font-size: 12px;
+        }
     )");
 
     return panel;
-}
-
-QWidget *MainWindow::buildProfileCard(QWidget *parent) {
+}QWidget *MainWindow::buildProfileCard(QWidget *parent) {
     auto *frame = new QFrame(parent);
     frame->setObjectName("profileCard");
     frame->setFixedHeight(138);
@@ -521,6 +686,9 @@ void MainWindow::updatePeerPlaceholder() {
     const bool hasPeers = m_controller && m_controller->peerDirectory()
                           && m_controller->peerDirectory()->rowCount() > 0;
     m_peerStack->setCurrentWidget(hasPeers ? static_cast<QWidget *>(m_peerList) : m_emptyState);
+    if (!hasPeers) {
+        updateChatHeader(QString());
+    }
 }
 
 void MainWindow::refreshProfileCard() {
@@ -543,12 +711,132 @@ void MainWindow::refreshProfileCard() {
     }
 }
 
+void MainWindow::updateChatHeader(const QString &displayName) {
+    if (m_chatNameLabel) {
+        m_chatNameLabel->setText(displayName.isEmpty() ? tr("选择联系人") : displayName);
+    }
+    if (m_chatPresenceLabel) {
+        m_chatPresenceLabel->setText(displayName.isEmpty() ? tr("尚未建立连接") : tr("已就绪，可随时开始对话"));
+    }
+}
+
+void MainWindow::appendTimelineHint(const QString &timestamp, const QString &text) {
+    ensureChatAreaForNewEntry();
+    if (!m_messageLayout) {
+        return;
+    }
+    auto *hint = new QLabel(m_messageViewport);
+    hint->setObjectName("timelineLabel");
+    const QString content = text.isEmpty() ? timestamp : QStringLiteral("%1  %2").arg(timestamp, text);
+    hint->setText(content);
+    hint->setAlignment(Qt::AlignCenter);
+    hint->setTextFormat(Qt::PlainText);
+    m_messageLayout->addWidget(hint, 0, Qt::AlignCenter);
+    m_messageLayout->addStretch(1);
+    scrollToLatestMessage();
+}
+
+void MainWindow::appendChatBubble(const QString &timestamp, const QString &sender, const QString &text, bool outgoing) {
+    ensureChatAreaForNewEntry();
+    if (!m_messageLayout) {
+        return;
+    }
+
+    auto *row = new QWidget(m_messageViewport);
+    auto *rowLayout = new QHBoxLayout(row);
+    rowLayout->setContentsMargins(0, 0, 0, 0);
+    rowLayout->setSpacing(12);
+
+    auto *avatar = new QLabel(row);
+    avatar->setObjectName(outgoing ? "avatarSelf" : "avatarPeer");
+    avatar->setFixedSize(40, 40);
+    avatar->setAlignment(Qt::AlignCenter);
+    avatar->setTextFormat(Qt::PlainText);
+    avatar->setText(sender.left(1).toUpper());
+
+    auto *bubble = new QFrame(row);
+    bubble->setObjectName(outgoing ? "bubbleSelf" : "bubblePeer");
+    auto *bubbleLayout = new QVBoxLayout(bubble);
+    bubbleLayout->setContentsMargins(16, 12, 16, 12);
+    bubbleLayout->setSpacing(4);
+
+    if (!outgoing) {
+        auto *senderLabel = new QLabel(sender, bubble);
+        senderLabel->setObjectName("bubbleSender");
+        senderLabel->setTextFormat(Qt::PlainText);
+        bubbleLayout->addWidget(senderLabel);
+    }
+
+    auto *textLabel = new QLabel(text, bubble);
+    textLabel->setObjectName("bubbleText");
+    textLabel->setWordWrap(true);
+    textLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    textLabel->setTextFormat(Qt::PlainText);
+    bubbleLayout->addWidget(textLabel);
+
+    auto *timeLabel = new QLabel(timestamp, bubble);
+    timeLabel->setObjectName("bubbleSender");
+    timeLabel->setAlignment(Qt::AlignRight);
+    timeLabel->setTextFormat(Qt::PlainText);
+    bubbleLayout->addWidget(timeLabel, 0, Qt::AlignRight);
+
+    if (outgoing) {
+        rowLayout->addStretch(1);
+        rowLayout->addWidget(bubble);
+        rowLayout->addWidget(avatar);
+    } else {
+        rowLayout->addWidget(avatar);
+        rowLayout->addWidget(bubble);
+        rowLayout->addStretch(1);
+    }
+
+    m_messageLayout->addWidget(row);
+    m_messageLayout->addStretch(1);
+    scrollToLatestMessage();
+}
+
+void MainWindow::ensureChatAreaForNewEntry() {
+    if (m_chatEmptyLabel) {
+        m_chatEmptyLabel->setVisible(false);
+    }
+    if (!m_messageLayout || m_messageLayout->count() == 0) {
+        return;
+    }
+    const int lastIndex = m_messageLayout->count() - 1;
+    if (auto *lastItem = m_messageLayout->itemAt(lastIndex); lastItem && lastItem->spacerItem()) {
+        delete m_messageLayout->takeAt(lastIndex);
+    }
+}
+
+void MainWindow::scrollToLatestMessage() const {
+    if (!m_messageScroll) {
+        return;
+    }
+    if (auto *bar = m_messageScroll->verticalScrollBar()) {
+        bar->setValue(bar->maximum());
+    }
+}
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
+    if (watched == m_inputEdit && event && event->type() == QEvent::KeyPress) {
+        auto *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
+            if (keyEvent->modifiers().testFlag(Qt::ShiftModifier)) {
+                return QMainWindow::eventFilter(watched, event);
+            }
+            handleSend();
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
+}
+
 void MainWindow::handleSend() {
     if (!m_controller) {
         return;
     }
 
-    const QString text = m_input->text().trimmed();
+    const QString text = m_inputEdit ? m_inputEdit->toPlainText().trimmed() : QString();
     if (text.isEmpty()) {
         return;
     }
@@ -561,8 +849,12 @@ void MainWindow::handleSend() {
     const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
     const ProfileDetails profile = m_controller->profileDetails();
     const QString roleDisplay = profile.name.isEmpty() ? tr("我") : profile.name;
-    m_chatLog->append(QStringLiteral("[%1] %2: %3").arg(timestamp, roleDisplay, text));
-    m_input->clear();
+    appendTimelineHint(timestamp, QString());
+    appendChatBubble(timestamp, roleDisplay, text, true);
+    if (m_inputEdit) {
+        m_inputEdit->clear();
+        m_inputEdit->setFocus();
+    }
 }
 
 void MainWindow::handleSendFile() {
@@ -588,6 +880,7 @@ void MainWindow::handlePeerSelection(const QModelIndex &index) {
     m_currentPeerId = index.data(PeerDirectory::IdRole).toString();
     const QString display = index.data(Qt::DisplayRole).toString();
     showStatus(tr("已选择 %1").arg(display));
+    updateChatHeader(display);
     if (m_shareDialog) {
         m_shareDialog->setPeerId(m_currentPeerId);
         m_shareDialog->setRemoteEntries(m_remoteShares.value(m_currentPeerId));
@@ -597,8 +890,9 @@ void MainWindow::handlePeerSelection(const QModelIndex &index) {
 void MainWindow::appendMessage(const PeerInfo &peer, const QString &roleName, const QString &text) {
     const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
     const QString label = peer.displayName.isEmpty() ? peer.id : peer.displayName;
-    const QString speaker = roleName.isEmpty() ? label : QStringLiteral("%1（%2）").arg(label, roleName);
-    m_chatLog->append(QStringLiteral("[%1] %2: %3").arg(timestamp, speaker, text));
+    const QString speaker = roleName.isEmpty() ? label : QStringLiteral("%1(%2)").arg(label, roleName);
+    appendTimelineHint(timestamp, QString());
+    appendChatBubble(timestamp, speaker, text, false);
 }
 
 void MainWindow::showStatus(const QString &text) {
@@ -631,8 +925,10 @@ void MainWindow::openProfileDialog() {
 void MainWindow::handleFileReceived(const PeerInfo &peer, const QString &roleName, const QString &fileName,
                                     const QString &path) {
     const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
-    const QString sender = roleName.isEmpty() ? peer.displayName : QStringLiteral("%1（%2）").arg(peer.displayName, roleName);
-    m_chatLog->append(QStringLiteral("[%1] %2 发送文件 %3，已保存到 %4").arg(timestamp, sender, fileName, path));
+    const QString sender = roleName.isEmpty() ? peer.displayName : QStringLiteral("%1(%2)").arg(peer.displayName, roleName);
+    const QString message = tr("发送文件 %1，已保存到 %2").arg(fileName, path);
+    appendTimelineHint(timestamp, tr("文件"));
+    appendChatBubble(timestamp, sender, message, false);
 }
 
 void MainWindow::handleShareCatalog(const QString &peerId, const QList<SharedFileInfo> &files) {
@@ -641,7 +937,10 @@ void MainWindow::handleShareCatalog(const QString &peerId, const QList<SharedFil
         m_shareDialog->setRemoteEntries(files);
     }
     const QString peerName = peerId == m_currentPeerId ? tr("当前联系人") : peerId;
-    m_chatLog->append(tr("收到 %1 的共享目录，共 %2 个文件。").arg(peerName).arg(files.size()));
+    const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
+    const QString description = tr("收到 %1 的共享目录，共 %2 个文件。").arg(peerName).arg(files.size());
+    appendTimelineHint(timestamp, tr("共享"));
+    appendChatBubble(timestamp, peerName, description, false);
 }
 
 void MainWindow::openShareCenter() {

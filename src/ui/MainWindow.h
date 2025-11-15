@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ShareCenterDialog.h"
 #include "core/ChatController.h"
@@ -18,6 +18,8 @@
 
 class SettingsDialog;
 class ProfileDialog;
+class QScrollArea;
+class QVBoxLayout;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -62,6 +64,10 @@ private slots:
     /*! \brief 打开共享中心。 */
     void openShareCenter();
 
+protected:
+    /*! \brief ������Ϣ�������������ؼ���¼��� */
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
     /*! \brief 创建窗口整体结构。 */
     void setupUi();
@@ -88,9 +94,19 @@ private:
     /*! \brief 根据联系人数量切换占位提示。 */
     void updatePeerPlaceholder();
     /*! \brief 刷新头像区的角色信息。 */
+        /*! \brief ˢ��ͷ�����Ľ�ɫ��Ϣ�� */
     void refreshProfileCard();
-
-    ChatController *m_controller = nullptr;
+    /*! \brief �����Ի�����ı���ʾ���� */
+    void updateChatHeader(const QString &displayName);
+    /*! \brief �����������ӾԻ���б����ݵ���ֵ���� */
+    void appendChatBubble(const QString &timestamp, const QString &sender, const QString &text, bool outgoing);
+    /*! \brief ��Ϣ��б�����ʱ������ָʾ�� */
+    void appendTimelineHint(const QString &timestamp, const QString &text);
+    /*! \brief ��ȷ��Ϣ������������ռλ���Ĵ������� */
+    void ensureChatAreaForNewEntry();
+    /*! \brief �����Ϣ���������������еļ����λ���� */
+    void scrollToLatestMessage() const;
+ChatController *m_controller = nullptr;
     QWidget *m_contactPanel = nullptr;
     QListView *m_peerList = nullptr;
     QStackedWidget *m_peerStack = nullptr;
@@ -99,8 +115,13 @@ private:
     QLabel *m_profileName = nullptr;
     QLabel *m_profileSignature = nullptr;
     QLineEdit *m_searchEdit = nullptr;
-    QTextEdit *m_chatLog = nullptr;
-    QLineEdit *m_input = nullptr;
+    QLabel *m_chatNameLabel = nullptr;
+    QLabel *m_chatPresenceLabel = nullptr;
+    QLabel *m_chatEmptyLabel = nullptr;
+    QScrollArea *m_messageScroll = nullptr;
+    QWidget *m_messageViewport = nullptr;
+    QVBoxLayout *m_messageLayout = nullptr;
+    QTextEdit *m_inputEdit = nullptr;
     QPushButton *m_sendButton = nullptr;
     QPushButton *m_addSubnetButton = nullptr;
     QPushButton *m_fileButton = nullptr;
