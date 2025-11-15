@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "ProfileDialog.h"
 #include "SettingsDialog.h"
 #include "ShareCenterDialog.h"
 
@@ -11,6 +12,7 @@
 #include <QInputDialog>
 #include <QItemSelectionModel>
 #include <QPainter>
+#include <QSizePolicy>
 #include <QStringList>
 #include <QStyle>
 #include <QVBoxLayout>
@@ -58,6 +60,7 @@ MainWindow::MainWindow(ChatController *controller, QWidget *parent)
     connect(m_controller, &ChatController::statusInfo, this, &MainWindow::showStatus);
     connect(m_controller, &ChatController::controllerWarning, this, &MainWindow::showStatus);
     connect(m_controller, &ChatController::roleChanged, this, [this]() { refreshProfileCard(); });
+    connect(m_controller, &ChatController::profileUpdated, this, [this](const ProfileDetails &) { refreshProfileCard(); });
     connect(m_addSubnetButton, &QPushButton::clicked, this, &MainWindow::handleAddSubnet);
 
     updatePeerPlaceholder();
@@ -91,7 +94,6 @@ QWidget *MainWindow::buildLeftPanel(QWidget *parent) {
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    layout->addWidget(buildTopBanner(panel));
     layout->addWidget(buildProfileCard(panel));
     layout->addWidget(buildSearchRow(panel));
     layout->addWidget(buildTabBar(panel));
@@ -205,57 +207,6 @@ QWidget *MainWindow::buildChatPanel(QWidget *parent) {
     return panel;
 }
 
-QWidget *MainWindow::buildTopBanner(QWidget *parent) {
-    auto *frame = new QFrame(parent);
-    frame->setObjectName("topBanner");
-    frame->setFixedHeight(48);
-
-    auto *layout = new QHBoxLayout(frame);
-    layout->setContentsMargins(16, 0, 16, 0);
-    layout->setSpacing(8);
-
-    auto *unitLabel = new QLabel(tr("单位名称"), frame);
-    unitLabel->setObjectName("unitLabel");
-    layout->addWidget(unitLabel);
-
-    auto *feedbackButton = new QPushButton(tr("反馈"), frame);
-    feedbackButton->setObjectName("feedbackButton");
-    feedbackButton->setFlat(true);
-    layout->addWidget(feedbackButton);
-
-    auto *settingsButton = new QToolButton(frame);
-    settingsButton->setObjectName("toolbarIcon");
-    settingsButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
-    layout->addWidget(settingsButton);
-
-    layout->addStretch();
-
-    auto *themeButton = new QToolButton(frame);
-    themeButton->setObjectName("toolbarIcon");
-    themeButton->setIcon(style()->standardIcon(QStyle::SP_DialogApplyButton));
-    layout->addWidget(themeButton);
-
-    auto *minButton = new QToolButton(frame);
-    minButton->setObjectName("toolbarIcon");
-    minButton->setIcon(style()->standardIcon(QStyle::SP_TitleBarMinButton));
-    layout->addWidget(minButton);
-
-    auto *closeButton = new QToolButton(frame);
-    closeButton->setObjectName("toolbarIcon");
-    closeButton->setIcon(style()->standardIcon(QStyle::SP_TitleBarCloseButton));
-    layout->addWidget(closeButton);
-
-    connect(feedbackButton, &QPushButton::clicked, this,
-            [this]() { showStatus(tr("反馈已记录，我们会尽快答复。")); });
-    connect(settingsButton, &QToolButton::clicked, this, &MainWindow::openSettingsDialog);
-    connect(themeButton, &QToolButton::clicked, this,
-            [this]() { showStatus(tr("主题商店功能开发中，敬请期待。")); });
-    connect(minButton, &QToolButton::clicked, this, &MainWindow::showMinimized);
-    connect(closeButton, &QToolButton::clicked, this, &MainWindow::close);
-
-    return frame;
-}
-
 QWidget *MainWindow::buildProfileCard(QWidget *parent) {
     auto *frame = new QFrame(parent);
     frame->setObjectName("profileCard");
@@ -265,10 +216,11 @@ QWidget *MainWindow::buildProfileCard(QWidget *parent) {
     layout->setContentsMargins(16, 12, 16, 12);
     layout->setSpacing(12);
 
-    m_avatarLabel = new QLabel(tr("E"), frame);
+    m_avatarLabel = new QPushButton(tr("E"), frame);
     m_avatarLabel->setObjectName("avatarLabel");
-    m_avatarLabel->setAlignment(Qt::AlignCenter);
-    m_avatarLabel->setMinimumSize(70, 70);
+    m_avatarLabel->setFixedSize(88, 88);
+    m_avatarLabel->setFlat(true);
+    m_avatarLabel->setFocusPolicy(Qt::NoFocus);
     layout->addWidget(m_avatarLabel);
 
     auto *infoLayout = new QVBoxLayout();
@@ -277,9 +229,12 @@ QWidget *MainWindow::buildProfileCard(QWidget *parent) {
 
     auto *nameRow = new QHBoxLayout();
     nameRow->setSpacing(6);
-    const QString defaultName = m_controller ? m_controller->localDisplayName() : tr("EVA-0");
+    const ProfileDetails profile = m_controller ? m_controller->profileDetails() : ProfileDetails{};
+    const QString defaultName =
+        profile.name.isEmpty() ? (m_controller ? m_controller->localDisplayName() : tr("EVA-0")) : profile.name;
     m_profileName = new QLabel(defaultName, frame);
     m_profileName->setObjectName("profileName");
+    m_profileName->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     nameRow->addWidget(m_profileName);
 
     auto *statusDot = new QLabel(frame);
@@ -297,27 +252,15 @@ QWidget *MainWindow::buildProfileCard(QWidget *parent) {
     const QString signatureText = m_controller ? m_controller->signatureText() : tr("编辑个性签名");
     m_profileSignature = new QLabel(signatureText, frame);
     m_profileSignature->setObjectName("profileSignature");
+    m_profileSignature->setWordWrap(true);
+    m_profileSignature->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     infoLayout->addWidget(m_profileSignature);
-
-    auto *quickRow = new QHBoxLayout();
-    quickRow->setSpacing(8);
-    const QStringList quickTags = {tr("淘"), tr("目"), tr("邮")};
-    for (const QString &tag : quickTags) {
-        auto *label = new QLabel(tag, frame);
-        label->setObjectName("quickBadge");
-        quickRow->addWidget(label);
-    }
-    auto *roleButton = new QPushButton(tr("切换角色"), frame);
-    roleButton->setObjectName("actionButton");
-    quickRow->addWidget(roleButton);
-    quickRow->addStretch();
-    infoLayout->addLayout(quickRow);
 
     layout->addLayout(infoLayout, 1);
 
     connect(statusButton, &QToolButton::clicked, this,
             [this]() { showStatus(tr("当前为在线状态，可在此切换。")); });
-    connect(roleButton, &QPushButton::clicked, this, &MainWindow::chooseRole);
+    connect(m_avatarLabel, &QPushButton::clicked, this, &MainWindow::openProfileDialog);
 
     return frame;
 }
@@ -335,14 +278,6 @@ QWidget *MainWindow::buildSearchRow(QWidget *parent) {
     m_searchEdit->setObjectName("searchField");
     m_searchEdit->setPlaceholderText(tr("搜索联系人、群或应用"));
     layout->addWidget(m_searchEdit, 1);
-
-    auto *addButton = new QToolButton(frame);
-    addButton->setObjectName("addButton");
-    addButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
-    layout->addWidget(addButton);
-
-    connect(addButton, &QToolButton::clicked, this,
-            [this]() { showStatus(tr("统一添加入口正在建设，敬请期待。")); });
 
     return frame;
 }
@@ -424,34 +359,33 @@ QWidget *MainWindow::buildBottomToolbar(QWidget *parent) {
     layout->setContentsMargins(16, 0, 16, 0);
     layout->setSpacing(16);
 
-    const QVector<QStyle::StandardPixmap> buttons = {
-        QStyle::SP_TitleBarMenuButton,
-        QStyle::SP_MediaVolume,
-        QStyle::SP_FileDialogInfoView,
-        QStyle::SP_FileDialogContentsView,
-        QStyle::SP_DialogOpenButton,
-        QStyle::SP_BrowserReload
+    const QVector<QPair<QStyle::StandardPixmap, QString>> buttons = {
+        {QStyle::SP_BrowserReload, tr("刷新状态")},
+        {QStyle::SP_FileDialogDetailedView, tr("设置中心")},
+        {QStyle::SP_ComputerIcon, tr("切换角色")}
     };
+    const int settingsIndex = buttons.size() - 2;
+    const int roleIndex = buttons.size() - 1;
 
     for (int i = 0; i < buttons.size(); ++i) {
         auto *tool = new QToolButton(frame);
         tool->setObjectName("bottomButton");
-        tool->setIcon(style()->standardIcon(buttons[i]));
+        tool->setIcon(style()->standardIcon(buttons[i].first));
+        tool->setToolTip(buttons[i].second);
         tool->setToolButtonStyle(Qt::ToolButtonIconOnly);
         layout->addWidget(tool);
 
-        connect(tool, &QToolButton::clicked, this, [this, i]() {
-            switch (i) {
-            case 0:
-                showStatus(tr("功能菜单准备中。"));
-                break;
-            case 1:
-                showStatus(tr("语音通知暂未开启。"));
-                break;
-            default:
-                showStatus(tr("该功能正在迭代更新。"));
-                break;
+        connect(tool, &QToolButton::clicked, this, [this, i, settingsIndex, roleIndex]() {
+            if (i == settingsIndex) {
+                openSettingsDialog();
+                return;
             }
+            if (i == roleIndex) {
+                chooseRole();
+                return;
+            }
+
+            showStatus(tr("功能正在迭代更新。"));
         });
     }
 
@@ -494,23 +428,6 @@ void MainWindow::applyContactPanelStyle(QWidget *panel) {
             border-right: 1px solid #e3c779;
             color: #5a4e3b;
         }
-        #topBanner {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                                        stop:0 #f4d26f, stop:1 #e79f1a);
-            color: #ffffff;
-        }
-        #unitLabel {
-            font-size: 16px;
-            font-weight: 600;
-        }
-        QPushButton#feedbackButton {
-            color: #ffffff;
-            font-size: 13px;
-        }
-        QToolButton#toolbarIcon {
-            border: none;
-            color: #ffffff;
-        }
         #profileCard {
             background: #fbeab6;
             border-bottom: 1px solid #f4d98e;
@@ -539,13 +456,6 @@ void MainWindow::applyContactPanelStyle(QWidget *panel) {
             border: none;
             color: #b77a13;
         }
-        #quickBadge {
-            background: #f8cf7a;
-            color: #a15f00;
-            border-radius: 12px;
-            padding: 4px 10px;
-            font-weight: 600;
-        }
         #searchRow {
             background: #fdf1c8;
         }
@@ -554,11 +464,6 @@ void MainWindow::applyContactPanelStyle(QWidget *panel) {
             border-radius: 18px;
             padding: 6px 12px;
             background: rgba(255, 255, 255, 0.9);
-        }
-        QToolButton#addButton {
-            border: none;
-            background: transparent;
-            color: #c07b00;
         }
         #tabBar {
             background: #f0d796;
@@ -628,16 +533,18 @@ void MainWindow::refreshProfileCard() {
     if (!m_controller) {
         return;
     }
-    const RoleProfile role = m_controller->activeRole();
-    const QString displayName = role.name.isEmpty() ? m_controller->localDisplayName() : role.name;
+    const ProfileDetails profile = m_controller->profileDetails();
+    const QString displayName =
+        profile.name.isEmpty() ? m_controller->localDisplayName() : profile.name;
     if (m_profileName) {
         m_profileName->setText(displayName);
     }
     if (m_profileSignature) {
-        m_profileSignature->setText(m_controller->signatureText());
+        const QString signature = profile.signature.isEmpty() ? tr("编辑个性签名") : profile.signature;
+        m_profileSignature->setText(signature);
     }
     if (m_avatarLabel) {
-        const QString letter = role.avatarLetter.isEmpty() ? displayName.left(1).toUpper() : role.avatarLetter;
+        const QString letter = displayName.left(1).toUpper();
         m_avatarLabel->setText(letter);
     }
 }
@@ -723,6 +630,18 @@ void MainWindow::openSettingsDialog() {
     m_settingsDialog->show();
     m_settingsDialog->raise();
     m_settingsDialog->activateWindow();
+}
+
+void MainWindow::openProfileDialog() {
+    if (!m_controller) {
+        return;
+    }
+    if (!m_profileDialog) {
+        m_profileDialog = new ProfileDialog(m_controller, this);
+    }
+    m_profileDialog->show();
+    m_profileDialog->raise();
+    m_profileDialog->activateWindow();
 }
 
 void MainWindow::handleFileReceived(const PeerInfo &peer, const QString &roleName, const QString &fileName,

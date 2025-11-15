@@ -18,6 +18,7 @@
 #include <QVector>
 
 class SettingsDialog;
+class ProfileDialog;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -52,6 +53,8 @@ private slots:
     void openSettingsDialog();
     /*! \brief 选择当前发言角色。 */
     void chooseRole();
+    /*! \brief 打开个人资料对话框。 */
+    void openProfileDialog();
     /*! \brief 发送文件。 */
     void handleSendFile();
     /*! \brief 收到文件后的反馈。 */
@@ -69,8 +72,6 @@ private:
     QWidget *buildLeftPanel(QWidget *parent);
     /*! \brief 构建右侧聊天面板。 */
     QWidget *buildChatPanel(QWidget *parent);
-    /*! \brief 构建顶部单位和操作条。 */
-    QWidget *buildTopBanner(QWidget *parent);
     /*! \brief 构建用户档案卡片。 */
     QWidget *buildProfileCard(QWidget *parent);
     /*! \brief 构建搜索区域。 */
@@ -97,7 +98,7 @@ private:
     QListView *m_peerList = nullptr;
     QStackedWidget *m_peerStack = nullptr;
     QWidget *m_emptyState = nullptr;
-    QLabel *m_avatarLabel = nullptr;
+    QPushButton *m_avatarLabel = nullptr;
     QLabel *m_profileName = nullptr;
     QLabel *m_profileSignature = nullptr;
     QLineEdit *m_searchEdit = nullptr;
@@ -113,5 +114,6 @@ private:
     QPointer<SettingsDialog> m_settingsDialog;
     QPointer<RoleSelectionDialog> m_roleDialog;
     QPointer<ShareCenterDialog> m_shareDialog;
+    QPointer<ProfileDialog> m_profileDialog;
     QHash<QString, QList<SharedFileInfo>> m_remoteShares;
 };

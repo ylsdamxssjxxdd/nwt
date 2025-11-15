@@ -35,6 +35,22 @@ struct SharedFileInfo {
 Q_DECLARE_METATYPE(SharedFileInfo)
 
 /*!
+ * \brief 个人资料信息。
+ */
+struct ProfileDetails {
+    QString name;
+    QString signature;
+    QString gender;
+    QString unit;
+    QString department;
+    QString phone;
+    QString mobile;
+    QString email;
+    QString version;
+    QString ip;
+};
+
+/*!
  * \brief ������ͨ�������������õ���һ��������
  */
 struct GeneralSettings {
@@ -126,6 +142,7 @@ struct AppSettings {
     QStringList sharedDirectories;
     QString activeRoleId;
     QString signatureText;
+    ProfileDetails profile;
 };
 
 class ChatController : public QObject {
@@ -145,6 +162,7 @@ public:
     RoleProfile activeRole() const;
     bool hasActiveRole() const;
     bool requiresRoleSelection() const { return !m_hasStoredRole; }
+    ProfileDetails profileDetails() const;
 
 public slots:
     void sendMessageToPeer(const QString &peerId, const QString &text);
@@ -162,6 +180,7 @@ public slots:
     void updateMailSettings(const MailSettings &settings);
     void updateSharedDirectories(const QStringList &directories);
     void updateSignatureText(const QString &signature);
+    void updateProfileDetails(const ProfileDetails &details);
 
 signals:
     void chatMessageReceived(const PeerInfo &peer, const QString &roleName, const QString &text);
@@ -171,6 +190,7 @@ signals:
     void controllerWarning(const QString &message);
     void preferencesChanged(const AppSettings &settings);
     void roleChanged(const RoleProfile &profile);
+    void profileUpdated(const ProfileDetails &details);
 
 private:
     QString configFilePath() const;
@@ -188,6 +208,8 @@ private:
     QList<SharedFileInfo> collectLocalShares();
     QString saveIncomingFile(const QString &fileName, const QByteArray &data);
     QString buildShareEntryId(const QString &filePath) const;
+    ProfileDetails parseProfileObject(const QJsonObject &object) const;
+    QJsonObject profileToJson(const ProfileDetails &details) const;
 
     PeerDirectory m_peerDirectory;
     DiscoveryService m_discovery;

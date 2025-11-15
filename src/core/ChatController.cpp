@@ -243,6 +243,10 @@ const AppSettings &ChatController::settings() const {
     return m_settings;
 }
 
+ProfileDetails ChatController::profileDetails() const {
+    return m_settings.profile;
+}
+
 QVector<RoleProfile> ChatController::availableRoles() const {
     return m_roles;
 }
@@ -396,6 +400,17 @@ void ChatController::updateSignatureText(const QString &signature) {
     emit preferencesChanged(m_settings);
 }
 
+void ChatController::updateProfileDetails(const ProfileDetails &details) {
+    m_settings.profile = details;
+    if (!details.name.isEmpty()) {
+        m_displayName = details.name;
+    }
+    m_settings.signatureText = details.signature;
+    persistSettings();
+    emit profileUpdated(details);
+    emit preferencesChanged(m_settings);
+}
+
 QString ChatController::configFilePath() const {
     const QString baseDir = QCoreApplication::applicationDirPath();
     return QDir(baseDir).filePath(QStringLiteral("lan_chat_settings.json"));
@@ -444,6 +459,7 @@ void ChatController::loadSettings() {
         m_hasStoredRole = !m_settings.activeRoleId.isEmpty();
         m_settings.signatureText =
             preferences.value(QStringLiteral("signature")).toString(QStringLiteral("编辑个性签名"));
+        m_settings.profile = parseProfileObject(preferences.value(QStringLiteral("profile")).toObject());
     }
 
     if (m_localId.isEmpty()) {
@@ -455,6 +471,22 @@ void ChatController::loadSettings() {
     if (m_settings.signatureText.isEmpty()) {
         m_settings.signatureText = QStringLiteral("编辑个性签名");
     }
+    if (m_settings.profile.name.isEmpty()) {
+        m_settings.profile.name = m_displayName;
+    }
+    if (m_settings.profile.signature.isEmpty()) {
+        m_settings.profile.signature = m_settings.signatureText;
+    }
+    if (m_settings.profile.version.isEmpty()) {
+        m_settings.profile.version = QCoreApplication::applicationVersion();
+        if (m_settings.profile.version.isEmpty()) {
+            m_settings.profile.version = QStringLiteral("1.0.0");
+        }
+    }
+    if (m_settings.profile.ip.isEmpty()) {
+        m_settings.profile.ip = QStringLiteral("192.168.0.2");
+    }
+    m_displayName = m_settings.profile.name;
     collectLocalShares();
 }
 
@@ -492,7 +524,8 @@ void ChatController::persistSettings() {
         {QStringLiteral("mail"), mailSettingsToJson(m_settings.mail)},
         {QStringLiteral("sharedFolders"), toJsonArray(m_settings.sharedDirectories)},
         {QStringLiteral("activeRoleId"), m_settings.activeRoleId},
-        {QStringLiteral("signature"), m_settings.signatureText}
+        {QStringLiteral("signature"), m_settings.signatureText},
+        {QStringLiteral("profile"), profileToJson(m_settings.profile)}
     };
 
     QJsonObject root{
@@ -670,4 +703,34 @@ QString ChatController::saveIncomingFile(const QString &fileName, const QByteArr
 QString ChatController::buildShareEntryId(const QString &filePath) const {
     const QByteArray hash = QCryptographicHash::hash(filePath.toUtf8(), QCryptographicHash::Sha1);
     return QString::fromLatin1(hash.toHex());
+}
+
+ProfileDetails ChatController::parseProfileObject(const QJsonObject &object) const {
+    ProfileDetails details;
+    details.name = object.value(QStringLiteral("name")).toString(m_displayName);
+    details.signature = object.value(QStringLiteral("signature")).toString(m_settings.signatureText);
+    details.gender = object.value(QStringLiteral("gender")).toString(QStringLiteral("男"));
+    details.unit = object.value(QStringLiteral("unit")).toString();
+    details.department = object.value(QStringLiteral("department")).toString();
+    details.phone = object.value(QStringLiteral("phone")).toString();
+    details.mobile = object.value(QStringLiteral("mobile")).toString();
+    details.email = object.value(QStringLiteral("email")).toString();
+    details.version = object.value(QStringLiteral("version")).toString();
+    details.ip = object.value(QStringLiteral("ip")).toString();
+    return details;
+}
+
+QJsonObject ChatController::profileToJson(const ProfileDetails &details) const {
+    return QJsonObject{
+        {QStringLiteral("name"), details.name},
+        {QStringLiteral("signature"), details.signature},
+        {QStringLiteral("gender"), details.gender},
+        {QStringLiteral("unit"), details.unit},
+        {QStringLiteral("department"), details.department},
+        {QStringLiteral("phone"), details.phone},
+        {QStringLiteral("mobile"), details.mobile},
+        {QStringLiteral("email"), details.email},
+        {QStringLiteral("version"), details.version},
+        {QStringLiteral("ip"), details.ip}
+    };
 }
