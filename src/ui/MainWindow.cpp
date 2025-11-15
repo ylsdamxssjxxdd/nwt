@@ -361,11 +361,9 @@ QWidget *MainWindow::buildBottomToolbar(QWidget *parent) {
 
     const QVector<QPair<QStyle::StandardPixmap, QString>> buttons = {
         {QStyle::SP_BrowserReload, tr("刷新状态")},
-        {QStyle::SP_FileDialogDetailedView, tr("设置中心")},
-        {QStyle::SP_ComputerIcon, tr("切换角色")}
+        {QStyle::SP_FileDialogDetailedView, tr("设置中心")}
     };
-    const int settingsIndex = buttons.size() - 2;
-    const int roleIndex = buttons.size() - 1;
+    const int settingsIndex = buttons.size() - 1;
 
     for (int i = 0; i < buttons.size(); ++i) {
         auto *tool = new QToolButton(frame);
@@ -375,13 +373,9 @@ QWidget *MainWindow::buildBottomToolbar(QWidget *parent) {
         tool->setToolButtonStyle(Qt::ToolButtonIconOnly);
         layout->addWidget(tool);
 
-        connect(tool, &QToolButton::clicked, this, [this, i, settingsIndex, roleIndex]() {
+        connect(tool, &QToolButton::clicked, this, [this, i, settingsIndex]() {
             if (i == settingsIndex) {
                 openSettingsDialog();
-                return;
-            }
-            if (i == roleIndex) {
-                chooseRole();
                 return;
             }
 
@@ -565,8 +559,8 @@ void MainWindow::handleSend() {
 
     m_controller->sendMessageToPeer(m_currentPeerId, text);
     const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
-    const RoleProfile role = m_controller->activeRole();
-    const QString roleDisplay = role.name.isEmpty() ? tr("我") : role.name;
+    const ProfileDetails profile = m_controller->profileDetails();
+    const QString roleDisplay = profile.name.isEmpty() ? tr("我") : profile.name;
     m_chatLog->append(QStringLiteral("[%1] %2: %3").arg(timestamp, roleDisplay, text));
     m_input->clear();
 }
@@ -584,16 +578,6 @@ void MainWindow::handleSendFile() {
         return;
     }
     m_controller->sendFileToPeer(m_currentPeerId, filePath);
-}
-
-void MainWindow::chooseRole() {
-    if (!m_controller) {
-        return;
-    }
-    RoleSelectionDialog dialog(m_controller, this);
-    if (dialog.exec() == QDialog::Accepted) {
-        refreshProfileCard();
-    }
 }
 
 void MainWindow::handlePeerSelection(const QModelIndex &index) {

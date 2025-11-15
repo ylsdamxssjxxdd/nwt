@@ -265,9 +265,9 @@ void ChatController::sendMessageToPeer(const QString &peerId, const QString &tex
         emit controllerWarning(tr("未找到联系人 %1").arg(peerId));
         return;
     }
-    const RoleProfile profile = activeRole();
-    const QString roleName = profile.id.isEmpty() ? m_displayName : profile.name;
-    m_router.sendChatMessage(peer, text, profile.id, roleName);
+    const ProfileDetails profile = m_settings.profile;
+    const QString roleName = profile.name.isEmpty() ? m_displayName : profile.name;
+    m_router.sendChatMessage(peer, text, QString(), roleName);
 }
 
 void ChatController::sendFileToPeer(const QString &peerId, const QString &filePath) {

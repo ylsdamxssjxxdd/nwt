@@ -1,6 +1,5 @@
 #pragma once
 
-#include "RoleSelectionDialog.h"
 #include "ShareCenterDialog.h"
 #include "core/ChatController.h"
 
@@ -51,8 +50,6 @@ private slots:
     void handleAddSubnet();
     /*! \brief 打开设置中心。 */
     void openSettingsDialog();
-    /*! \brief 选择当前发言角色。 */
-    void chooseRole();
     /*! \brief 打开个人资料对话框。 */
     void openProfileDialog();
     /*! \brief 发送文件。 */
@@ -112,7 +109,6 @@ private:
     QVector<QToolButton *> m_tabButtons;
     QString m_currentPeerId;
     QPointer<SettingsDialog> m_settingsDialog;
-    QPointer<RoleSelectionDialog> m_roleDialog;
     QPointer<ShareCenterDialog> m_shareDialog;
     QPointer<ProfileDialog> m_profileDialog;
     QHash<QString, QList<SharedFileInfo>> m_remoteShares;

@@ -1,0 +1,107 @@
+﻿<EmotionTable>
+	<EmotionGroup Name="原创" Index="-3" Sys="true" Small="true">
+		<Emotion Tips="微笑" Id="1251" Image="101.gif" Thumb="101.png" Index="1"/>
+		<Emotion Tips="偷笑" Id="1252" Image="102.gif" Thumb="102.png" Index="2"/>
+		<Emotion Tips="大笑1" Id="1253" Image="103.gif" Thumb="103.png" Index="3"/>
+		<Emotion Tips="调皮" Id="1254" Image="104.gif" Thumb="104.png" Index="4"/>
+		<Emotion Tips="憨笑" Id="1255" Image="105.gif" Thumb="105.png" Index="5"/>
+		<Emotion Tips="难过" Id="1256" Image="106.gif" Thumb="106.png" Index="6"/>
+		<Emotion Tips="害羞" Id="1257" Image="107.gif" Thumb="107.png" Index="7"/>
+		<Emotion Tips="困倦" Id="1258" Image="108.gif" Thumb="108.png" Index="8"/>
+		<Emotion Tips="擦汗" Id="1259" Image="109.gif" Thumb="109.png" Index="9"/>
+		<Emotion Tips="哭泣1" Id="1260" Image="110.gif" Thumb="110.png" Index="10"/>
+		<Emotion Tips="睡觉" Id="1261" Image="111.gif" Thumb="111.png" Index="11"/>
+		<Emotion Tips="奋斗" Id="1262" Image="112.gif" Thumb="112.png" Index="12"/>
+		<Emotion Tips="摆酷" Id="1263" Image="113.gif" Thumb="113.png" Index="13"/>
+		<Emotion Tips="疑问" Id="1264" Image="114.gif" Thumb="114.png" Index="14"/>
+		<Emotion Tips="晕" Id="1265" Image="115.gif" Thumb="115.png" Index="15"/>
+		<Emotion Tips="再见" Id="1266" Image="116.gif" Thumb="116.png" Index="16"/>
+		<Emotion Tips="大笑2" Id="1267" Image="201.gif" Thumb="201.png" Index="17"/>
+		<Emotion Tips="鼓掌1" Id="1268" Image="202.gif" Thumb="202.png" Index="18"/>
+		<Emotion Tips="得意" Id="1269" Image="203.gif" Thumb="203.png" Index="19"/>
+		<Emotion Tips="抽烟" Id="1270" Image="204.gif" Thumb="204.png" Index="20"/>
+		<Emotion Tips="难受" Id="1271" Image="205.gif" Thumb="205.png" Index="21"/>
+		<Emotion Tips="不开心" Id="1272" Image="206.gif" Thumb="206.png" Index="22"/>
+		<Emotion Tips="郁闷" Id="1273" Image="207.gif" Thumb="207.png" Index="23"/>
+		<Emotion Tips="发脾气" Id="1274" Image="208.gif" Thumb="208.png" Index="24"/>
+		<Emotion Tips="发怒" Id="1275" Image="209.gif" Thumb="209.png" Index="25"/>
+		<Emotion Tips="发狂" Id="1276" Image="210.gif" Thumb="210.png" Index="26"/>
+		<Emotion Tips="衰" Id="1277" Image="211.gif" Thumb="211.png" Index="27"/>
+		<Emotion Tips="可怜" Id="1278" Image="212.gif" Thumb="212.png" Index="28"/>
+		<Emotion Tips="惊讶" Id="1279" Image="213.gif" Thumb="213.png" Index="29"/>
+		<Emotion Tips="闭嘴" Id="1280" Image="214.gif" Thumb="214.png" Index="30"/>
+		<Emotion Tips="不理你" Id="1281" Image="215.gif" Thumb="215.png" Index="31"/>
+		<Emotion Tips="财迷" Id="1282" Image="216.gif" Thumb="216.png" Index="32"/>
+		<Emotion Tips="囧" Id="1283" Image="217.gif" Thumb="217.png" Index="33"/>
+		<Emotion Tips="冷" Id="1284" Image="218.gif" Thumb="218.png" Index="34"/>
+		<Emotion Tips="吐" Id="1285" Image="219.gif" Thumb="219.png" Index="35"/>
+		<Emotion Tips="鄙视" Id="1286" Image="220.gif" Thumb="220.png" Index="36"/>
+		<Emotion Tips="查找" Id="1287" Image="221.gif" Thumb="221.png" Index="37"/>
+		<Emotion Tips="色" Id="1288" Image="222.gif" Thumb="222.png" Index="38"/>
+		<Emotion Tips="抠鼻子" Id="1289" Image="223.gif" Thumb="223.png" Index="39"/>
+		<Emotion Tips="思考" Id="1290" Image="224.gif" Thumb="224.png" Index="40"/>
+		<Emotion Tips="贼贼的" Id="1291" Image="225.gif" Thumb="225.png" Index="41"/>
+		<Emotion Tips="认真" Id="1292" Image="226.gif" Thumb="226.png" Index="42"/>
+		<Emotion Tips="哭泣2" Id="1293" Image="261.gif" Thumb="261.png" Index="43"/>
+		<Emotion Tips="握手" Id="1294" Image="117.gif" Thumb="117.png" Index="44"/>
+		<Emotion Tips="OK" Id="1295" Image="118.gif" Thumb="118.png" Index="45"/>
+		<Emotion Tips="鼓掌2" Id="1296" Image="119.gif" Thumb="119.png" Index="46"/>
+		<Emotion Tips="真棒" Id="1297" Image="120.gif" Thumb="120.png" Index="47"/>
+		<Emotion Tips="米饭" Id="1298" Image="121.gif" Thumb="121.png" Index="48"/>
+		<Emotion Tips="蛋糕" Id="1299" Image="122.gif" Thumb="122.png" Index="49"/>
+		<Emotion Tips="美酒" Id="1300" Image="123.gif" Thumb="123.png" Index="50"/>
+		<Emotion Tips="篮球" Id="1301" Image="124.gif" Thumb="124.png" Index="51"/>
+		<Emotion Tips="礼物" Id="1302" Image="125.gif" Thumb="125.png" Index="52"/>
+		<Emotion Tips="邮件" Id="1303" Image="126.gif" Thumb="126.png" Index="53"/>
+		<Emotion Tips="咖啡" Id="1304" Image="127.gif" Thumb="127.png" Index="54"/>
+		<Emotion Tips="台灯" Id="1305" Image="128.gif" Thumb="128.png" Index="55"/>
+		<Emotion Tips="电话" Id="1306" Image="129.gif" Thumb="129.png" Index="56"/>
+		<Emotion Tips="手机" Id="1307" Image="130.gif" Thumb="130.png" Index="57"/>
+		<Emotion Tips="音乐" Id="1308" Image="131.gif" Thumb="131.png" Index="58"/>
+		<Emotion Tips="灯泡" Id="1309" Image="132.gif" Thumb="132.png" Index="59"/>
+		<Emotion Tips="时钟" Id="1310" Image="133.gif" Thumb="133.png" Index="60"/>
+		<Emotion Tips="太阳" Id="1311" Image="228.gif" Thumb="228.png" Index="61"/>
+		<Emotion Tips="月亮" Id="1312" Image="229.gif" Thumb="229.png" Index="62"/>
+		<Emotion Tips="下雨" Id="1313" Image="230.gif" Thumb="230.png" Index="63"/>
+		<Emotion Tips="闪电" Id="1314" Image="231.gif" Thumb="231.png" Index="64"/>
+		<Emotion Tips="彩虹" Id="1315" Image="232.gif" Thumb="232.png" Index="65"/>
+		<Emotion Tips="雪花" Id="1316" Image="233.gif" Thumb="233.png" Index="66"/>
+		<Emotion Tips="雨伞" Id="1317" Image="234.gif" Thumb="234.png" Index="67"/>
+		<Emotion Tips="轿车" Id="1318" Image="235.gif" Thumb="235.png" Index="68"/>
+		<Emotion Tips="苹果" Id="1319" Image="236.gif" Thumb="236.png" Index="69"/>
+		<Emotion Tips="西瓜" Id="1320" Image="237.gif" Thumb="237.png" Index="70"/>
+		<Emotion Tips="香蕉" Id="1321" Image="238.gif" Thumb="238.png" Index="71"/>
+		<Emotion Tips="草莓" Id="1322" Image="239.gif" Thumb="239.png" Index="72"/>
+		<Emotion Tips="葡萄" Id="1323" Image="240.gif" Thumb="240.png" Index="73"/>
+		<Emotion Tips="蛋糕2" Id="1324" Image="241.gif" Thumb="241.png" Index="74"/>
+		<Emotion Tips="饮料1" Id="1325" Image="242.gif" Thumb="242.png" Index="75"/>
+		<Emotion Tips="糖" Id="1326" Image="243.gif" Thumb="243.png" Index="76"/>
+		<Emotion Tips="雪糕" Id="1327" Image="244.gif" Thumb="244.png" Index="77"/>
+		<Emotion Tips="饮料2" Id="1328" Image="245.gif" Thumb="245.png" Index="78"/>
+		<Emotion Tips="女" Id="1329" Image="246.gif" Thumb="246.png" Index="79"/>
+		<Emotion Tips="男" Id="1330" Image="247.gif" Thumb="247.png" Index="80"/>
+		<Emotion Tips="足球" Id="1331" Image="248.gif" Thumb="248.png" Index="81"/>
+		<Emotion Tips="羽毛球" Id="1332" Image="249.gif" Thumb="249.png" Index="82"/>
+		<Emotion Tips="庆贺" Id="1333" Image="250.gif" Thumb="250.png" Index="83"/>
+		<Emotion Tips="大便" Id="1334" Image="251.gif" Thumb="251.png" Index="84"/>
+	</EmotionGroup>
+	<EmotionGroup Name="班车小子" Index="-2" Sys="true">
+		<Emotion Tips="小作" Image="2001.gif" Thumb="2001.png"/>
+		<Emotion Tips="偷笑" Image="2002.gif" Thumb="2002.png"/>
+		<Emotion Tips="不屑" Image="2003.gif" Thumb="2003.png"/>
+		<Emotion Tips="鬼脸" Image="2004.gif" Thumb="2004.png"/>
+		<Emotion Tips="可怜" Image="2005.gif" Thumb="2005.png"/>
+		<Emotion Tips="吃惊" Image="2006.gif" Thumb="2006.png"/>
+		<Emotion Tips="伤心" Image="2007.gif" Thumb="2007.png"/>
+		<Emotion Tips="大笑" Image="2008.gif" Thumb="2008.png"/>
+		<Emotion Tips="怒" Image="2009.gif" Thumb="2009.png"/>
+		<Emotion Tips="得意" Image="2010.gif" Thumb="2010.png"/>
+		<Emotion Tips="加油" Image="2011.gif" Thumb="2011.png"/>
+		<Emotion Tips="欢迎" Image="2012.gif" Thumb="2012.png"/>
+		<Emotion Tips="亲亲" Image="2014.gif" Thumb="2014.png"/>
+		<Emotion Tips="谢谢" Image="2016.gif" Thumb="2016.png"/>
+		<Emotion Tips="儿童节" Image="2017.gif" Thumb="2017.png"/>
+	</EmotionGroup>
+	<EmotionGroup Name="我的收藏" Index="-1" Sys="false">
+	</EmotionGroup>
+</EmotionTable>
