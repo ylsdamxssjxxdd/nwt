@@ -63,10 +63,13 @@ void EmotionPicker::loadEmotions() {
             item.tips = attrs.value(QStringLiteral("Tips")).toString();
             item.thumbPath = attrs.value(QStringLiteral("Thumb")).toString();
             item.imagePath = attrs.value(QStringLiteral("Image")).toString();
+            if (!resourceExists(item.imagePath)) {
+                item.imagePath = item.thumbPath;
+            }
             if (item.imagePath.isEmpty()) {
                 item.imagePath = item.thumbPath;
             }
-            if (!item.tips.isEmpty() && resourceExists(item.thumbPath)) {
+            if (!item.tips.isEmpty() && resourceExists(item.thumbPath) && resourceExists(item.imagePath)) {
                 m_emotions.append(item);
             }
         }
