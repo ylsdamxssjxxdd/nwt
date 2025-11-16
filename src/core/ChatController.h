@@ -164,6 +164,7 @@ public:
     QString localDisplayName() const;
     quint16 listenPort() const;
     QList<QPair<QHostAddress, int>> configuredSubnets() const;
+    QList<QPair<QHostAddress, int>> blockedSubnets() const;
     const AppSettings &settings() const;
     QString signatureText() const { return m_settings.signatureText; }
     QVector<RoleProfile> availableRoles() const;
@@ -180,6 +181,7 @@ public slots:
     void shareCatalogToPeer(const QString &peerId);
     void addSubnet(const QHostAddress &network, int prefixLength);
     void setSubnets(const QList<QPair<QHostAddress, int>> &subnets);
+    void setBlockedSubnets(const QList<QPair<QHostAddress, int>> &subnets);
     void setActiveRoleId(const QString &roleId);
     void updateGeneralSettings(const GeneralSettings &settings);
     void updateNetworkSettings(const NetworkSettings &settings);
@@ -227,6 +229,7 @@ private:
     QString m_displayName;
     quint16 m_listenPort = 45600;
     QList<QPair<QHostAddress, int>> m_subnets;
+    QList<QPair<QHostAddress, int>> m_blockedSubnets;
     AppSettings m_settings;
     QVector<RoleProfile> m_roles;
     QHash<QString, SharedFileInfo> m_localShareIndex;

@@ -50,14 +50,21 @@ private:
     void refreshSubnetList();
     void handleSubnetAdd();
     void handleSubnetRemove();
+    void refreshBlockedList();
+    void handleBlockedAdd();
+    void handleBlockedRemove();
     bool parseSubnetInput(const QString &text, QHostAddress &network, int &prefixLength) const;
 
     QPointer<ChatController> m_controller;
     QButtonGroup *m_navGroup = nullptr;
     QStackedWidget *m_stack = nullptr;
     QListWidget *m_subnetList = nullptr;
+    QListWidget *m_blockList = nullptr;
     QLineEdit *m_subnetInput = nullptr;
+    QLineEdit *m_blockInput = nullptr;
     QPushButton *m_removeSubnetButton = nullptr;
+    QPushButton *m_removeBlockButton = nullptr;
     QCheckBox *m_restrictSubnetCheck = nullptr;
     QList<QPair<QHostAddress, int>> m_cachedSubnets;
+    QList<QPair<QHostAddress, int>> m_cachedBlockedSubnets;
 };

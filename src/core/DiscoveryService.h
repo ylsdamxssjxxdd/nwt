@@ -17,6 +17,7 @@ public:
     void start(quint16 broadcastPort = 45454);
     void setLocalIdentity(const QString &peerId, const QString &name, quint16 listenPort);
     void setSubnets(const QList<QPair<QHostAddress, int>> &subnets);
+    void setBlockedSubnets(const QList<QPair<QHostAddress, int>> &subnets);
     void probeSubnet(const QHostAddress &network, int prefixLength);
     void announceOnline();
     void stop();
@@ -35,6 +36,8 @@ private:
     void processPacket(const QByteArray &payload, const QHostAddress &sender);
     QList<QHostAddress> broadcastTargets() const;
     static QHostAddress broadcastFor(const QHostAddress &network, int prefixLength);
+    bool isBlockedAddress(const QHostAddress &address) const;
+    bool isBlockedRange(const QHostAddress &network, int prefixLength) const;
 
     QUdpSocket m_socket;
     QTimer m_heartbeatTimer;
@@ -43,4 +46,5 @@ private:
     quint16 m_listenPort = 0;
     quint16 m_broadcastPort = 45454;
     QList<QPair<QHostAddress, int>> m_subnets;
+    QList<QPair<QHostAddress, int>> m_blockedSubnets;
 };

@@ -25,6 +25,23 @@ int jsonInt(const QJsonObject &object, const QString &key, int fallback) {
     return object.contains(key) ? object.value(key).toInt(fallback) : fallback;
 }
 
+int maxPrefixFor(const QHostAddress &address) {
+    return address.protocol() == QAbstractSocket::IPv6Protocol ? 128 : 32;
+}
+
+QHostAddress normalizeNetwork(const QHostAddress &address, int prefixLength) {
+    if (address.protocol() == QAbstractSocket::IPv4Protocol && prefixLength >= 0 && prefixLength <= 32) {
+        const quint32 ip = address.toIPv4Address();
+        const quint32 mask = prefixLength == 0 ? 0 : 0xFFFFFFFFu << (32 - prefixLength);
+        return QHostAddress(ip & mask);
+    }
+    return address;
+}
+
+QString subnetToken(const QHostAddress &network, int prefixLength) {
+    return QStringLiteral("%1/%2").arg(network.toString()).arg(prefixLength);
+}
+
 GeneralSettings parseGeneral(const QJsonObject &object) {
     GeneralSettings settings;
     settings.autoStart = jsonBool(object, QStringLiteral("autoStart"), settings.autoStart);
@@ -240,6 +257,7 @@ bool ChatController::initialize() {
 
     m_discovery.setLocalIdentity(m_localId, m_displayName, m_listenPort);
     m_discovery.setSubnets(m_subnets);
+    m_discovery.setBlockedSubnets(m_blockedSubnets);
     m_discovery.start();
     m_discovery.announceOnline();
 
@@ -262,6 +280,10 @@ quint16 ChatController::listenPort() const {
 
 QList<QPair<QHostAddress, int>> ChatController::configuredSubnets() const {
     return m_subnets;
+}
+
+QList<QPair<QHostAddress, int>> ChatController::blockedSubnets() const {
+    return m_blockedSubnets;
 }
 
 const AppSettings &ChatController::settings() const {
@@ -372,23 +394,49 @@ void ChatController::setSubnets(const QList<QPair<QHostAddress, int>> &subnets) 
         if (pair.first.isNull()) {
             continue;
         }
-        const int maxPrefix = pair.first.protocol() == QAbstractSocket::IPv6Protocol ? 128 : 32;
+        const int maxPrefix = maxPrefixFor(pair.first);
         if (pair.second < 0 || pair.second > maxPrefix) {
             continue;
         }
-        const QString token = QStringLiteral("%1/%2").arg(pair.first.toString()).arg(pair.second);
+        QHostAddress normalized = normalizeNetwork(pair.first, pair.second);
+        const QString token = subnetToken(normalized, pair.second);
         if (seen.contains(token)) {
             continue;
         }
         seen.insert(token);
-        sanitized.append(pair);
+        sanitized.append(qMakePair(normalized, pair.second));
     }
     m_subnets = sanitized;
     m_discovery.setSubnets(m_subnets);
+    m_discovery.setBlockedSubnets(m_blockedSubnets);
     for (const auto &range : std::as_const(m_subnets)) {
         m_discovery.probeSubnet(range.first, range.second);
     }
     m_discovery.announceOnline();
+    persistSettings();
+}
+
+void ChatController::setBlockedSubnets(const QList<QPair<QHostAddress, int>> &subnets) {
+    QList<QPair<QHostAddress, int>> sanitized;
+    QSet<QString> seen;
+    for (const auto &pair : subnets) {
+        if (pair.first.isNull()) {
+            continue;
+        }
+        const int maxPrefix = maxPrefixFor(pair.first);
+        if (pair.second < 0 || pair.second > maxPrefix) {
+            continue;
+        }
+        QHostAddress normalized = normalizeNetwork(pair.first, pair.second);
+        const QString token = subnetToken(normalized, pair.second);
+        if (seen.contains(token)) {
+            continue;
+        }
+        seen.insert(token);
+        sanitized.append(qMakePair(normalized, pair.second));
+    }
+    m_blockedSubnets = sanitized;
+    m_discovery.setBlockedSubnets(m_blockedSubnets);
     persistSettings();
 }
 
@@ -491,8 +539,18 @@ void ChatController::loadSettings() {
             const QJsonObject entry = value.toObject();
             QHostAddress addr(entry.value(QStringLiteral("network")).toString());
             const int prefix = entry.value(QStringLiteral("prefix")).toInt(-1);
-            if (!addr.isNull() && prefix >= 0 && prefix <= 32) {
-                m_subnets.append(qMakePair(addr, prefix));
+            if (!addr.isNull() && prefix >= 0 && prefix <= maxPrefixFor(addr)) {
+                m_subnets.append(qMakePair(normalizeNetwork(addr, prefix), prefix));
+            }
+        }
+        const QJsonArray blockedArray = network.value(QStringLiteral("blockedSubnets")).toArray();
+        m_blockedSubnets.clear();
+        for (const QJsonValue &value : blockedArray) {
+            const QJsonObject entry = value.toObject();
+            QHostAddress addr(entry.value(QStringLiteral("network")).toString());
+            const int prefix = entry.value(QStringLiteral("prefix")).toInt(-1);
+            if (!addr.isNull() && prefix >= 0 && prefix <= maxPrefixFor(addr)) {
+                m_blockedSubnets.append(qMakePair(normalizeNetwork(addr, prefix), prefix));
             }
         }
 
@@ -559,10 +617,18 @@ void ChatController::persistSettings() {
             {QStringLiteral("prefix"), pair.second}
         });
     }
+    QJsonArray blockedArray;
+    for (const auto &pair : std::as_const(m_blockedSubnets)) {
+        blockedArray.append(QJsonObject{
+            {QStringLiteral("network"), pair.first.toString()},
+            {QStringLiteral("prefix"), pair.second}
+        });
+    }
 
     QJsonObject network{
         {QStringLiteral("listenPort"), static_cast<int>(m_listenPort)},
-        {QStringLiteral("subnets"), subnetArray}
+        {QStringLiteral("subnets"), subnetArray},
+        {QStringLiteral("blockedSubnets"), blockedArray}
     };
 
     QJsonObject preferences{

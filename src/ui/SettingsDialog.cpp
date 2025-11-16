@@ -371,6 +371,45 @@ QWidget *SettingsDialog::createNetworkPage() {
         }
     });
 
+    auto *blockSection = createSection(tr("网段黑名单"));
+    auto *blockLayout = sectionLayout(blockSection);
+    auto *blockIntro = new QLabel(tr("加入黑名单的网段将不会进行广播和发现，适用于隔离访客或敏感网络。"), blockSection);
+    blockIntro->setWordWrap(true);
+    blockLayout->addWidget(blockIntro);
+
+    auto *blockRow = new QHBoxLayout();
+    m_blockInput = new QLineEdit(blockSection);
+    m_blockInput->setObjectName(QStringLiteral("net_blockInput"));
+    m_blockInput->setPlaceholderText(tr("示例：10.10.0.0/16 或 10.10.0.1"));
+    auto *blockAddButton = new QPushButton(tr("添加"), blockSection);
+    blockAddButton->setObjectName(QStringLiteral("net_blockAdd"));
+    m_removeBlockButton = new QPushButton(tr("删除"), blockSection);
+    m_removeBlockButton->setObjectName(QStringLiteral("net_blockRemove"));
+    m_removeBlockButton->setEnabled(false);
+    blockRow->addWidget(m_blockInput, 1);
+    blockRow->addWidget(blockAddButton);
+    blockRow->addWidget(m_removeBlockButton);
+    blockLayout->addLayout(blockRow);
+
+    m_blockList = new QListWidget(blockSection);
+    m_blockList->setObjectName(QStringLiteral("net_blockList"));
+    m_blockList->setSelectionMode(QAbstractItemView::SingleSelection);
+    blockLayout->addWidget(m_blockList);
+
+    auto *blockHint = new QLabel(tr("黑名单同样需要重启客户端后彻底生效。"), blockSection);
+    blockHint->setObjectName(QStringLiteral("hintLabel"));
+    blockHint->setWordWrap(true);
+    blockLayout->addWidget(blockHint);
+    layout->addWidget(blockSection);
+
+    connect(blockAddButton, &QPushButton::clicked, this, &SettingsDialog::handleBlockedAdd);
+    connect(m_removeBlockButton, &QPushButton::clicked, this, &SettingsDialog::handleBlockedRemove);
+    connect(m_blockList, &QListWidget::currentRowChanged, this, [this](int row) {
+        if (m_removeBlockButton) {
+            m_removeBlockButton->setEnabled(row >= 0);
+        }
+    });
+
     auto *refreshSection = createSection(tr("自动刷新"));
     auto *refreshLayout = sectionLayout(refreshSection);
     auto *refreshRow = new QHBoxLayout();
@@ -394,6 +433,7 @@ QWidget *SettingsDialog::createNetworkPage() {
     layout->addStretch(1);
     bindNetworkSettings(page);
     refreshSubnetList();
+    refreshBlockedList();
     return page;
 }
 QWidget *SettingsDialog::createNotificationPage() {
@@ -833,6 +873,7 @@ void SettingsDialog::bindNetworkSettings(QWidget *section) {
             m_controller->updateNetworkSettings(prefs);
         });
     }
+    refreshBlockedList();
     if (auto *autoRefresh = section->findChild<QCheckBox *>(QStringLiteral("net_autoRefresh"))) {
         autoRefresh->setChecked(settings.autoRefresh);
         connect(autoRefresh, &QCheckBox::toggled, this, [this](bool state) {
@@ -956,6 +997,70 @@ void SettingsDialog::handleSubnetRemove() {
     next.removeAt(row);
     m_controller->setSubnets(next);
     refreshSubnetList();
+}
+
+void SettingsDialog::refreshBlockedList() {
+    if (!m_controller || !m_blockList) {
+        return;
+    }
+    const int previousRow = m_blockList->currentRow();
+    m_cachedBlockedSubnets = m_controller->blockedSubnets();
+    m_blockList->clear();
+    for (const auto &pair : std::as_const(m_cachedBlockedSubnets)) {
+        m_blockList->addItem(subnetDisplay(pair));
+    }
+    if (m_blockList->count() == 0) {
+        if (m_removeBlockButton) {
+            m_removeBlockButton->setEnabled(false);
+        }
+        return;
+    }
+    int targetRow = previousRow;
+    if (targetRow >= m_blockList->count()) {
+        targetRow = m_blockList->count() - 1;
+    }
+    if (targetRow < 0) {
+        targetRow = 0;
+    }
+    m_blockList->setCurrentRow(targetRow);
+}
+
+void SettingsDialog::handleBlockedAdd() {
+    if (!m_controller || !m_blockInput) {
+        return;
+    }
+    QHostAddress network;
+    int prefix = -1;
+    if (!parseSubnetInput(m_blockInput->text(), network, prefix)) {
+        QMessageBox::warning(this, tr("网段黑名单"), tr("请输入合法的网段，例如 10.10.0.0/16。"));
+        return;
+    }
+    auto next = m_cachedBlockedSubnets;
+    const QString token = subnetDisplay(qMakePair(network, prefix));
+    for (const auto &pair : std::as_const(next)) {
+        if (subnetDisplay(pair) == token) {
+            QMessageBox::information(this, tr("网段黑名单"), tr("该网段已存在，无需重复添加。"));
+            return;
+        }
+    }
+    next.append(qMakePair(network, prefix));
+    m_controller->setBlockedSubnets(next);
+    m_blockInput->clear();
+    refreshBlockedList();
+}
+
+void SettingsDialog::handleBlockedRemove() {
+    if (!m_controller || !m_blockList) {
+        return;
+    }
+    const int row = m_blockList->currentRow();
+    if (row < 0 || row >= m_cachedBlockedSubnets.size()) {
+        return;
+    }
+    auto next = m_cachedBlockedSubnets;
+    next.removeAt(row);
+    m_controller->setBlockedSubnets(next);
+    refreshBlockedList();
 }
 
 bool SettingsDialog::parseSubnetInput(const QString &text, QHostAddress &network, int &prefixLength) const {
