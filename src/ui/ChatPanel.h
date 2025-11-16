@@ -3,6 +3,7 @@
 #include <QFrame>
 
 class EmotionPicker;
+class AnimatedImageHandler;
 class QLabel;
 class QScrollArea;
 class QVBoxLayout;
@@ -57,4 +58,5 @@ private:
     QLabel *m_statusLabel = nullptr;
     QToolButton *m_emotionButton = nullptr;
     EmotionPicker *m_emotionPicker = nullptr;
+    AnimatedImageHandler *m_inputEmojiHandler = nullptr;
 };

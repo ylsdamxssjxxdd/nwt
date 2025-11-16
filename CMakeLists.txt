@@ -22,6 +22,7 @@ set(SOURCES
     src/ui/ShareCenterDialog.cpp
     src/ui/ProfileDialog.cpp
     src/ui/StyleHelper.cpp
+    src/ui/EmojiImageHandler.cpp
     src/ui/PeerListModel.cpp
     src/ui/ContactsSidebar.cpp
     src/ui/EmotionPicker.cpp

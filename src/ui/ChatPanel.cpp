@@ -1,6 +1,7 @@
 #include "ChatPanel.h"
 
 #include "EmotionPicker.h"
+#include "EmojiImageHandler.h"
 #include "StyleHelper.h"
 
 #include <QDateTime>
@@ -145,8 +146,9 @@ void ChatPanel::setupUi() {
     m_inputEdit->setMinimumHeight(110);
     m_inputEdit->setMaximumHeight(150);
     m_inputEdit->installEventFilter(this);
-    if (m_inputEdit->document()) {
-        m_inputEdit->document()->setBaseUrl(QUrl(QStringLiteral("qrc:/")));
+    if (auto *doc = m_inputEdit->document()) {
+        doc->setBaseUrl(QUrl(QStringLiteral("qrc:/")));
+        EmojiImageHandler::install(doc, m_inputEdit);
     }
     inputLayout->addWidget(m_inputEdit);
 
@@ -298,6 +300,10 @@ void ChatPanel::appendChatBubble(const QString &timestamp, const QString &sender
     textView->setReadOnly(true);
     textView->setFocusPolicy(Qt::NoFocus);
     textView->document()->setBaseUrl(QUrl(QStringLiteral("qrc:/")));
+    if (textView->document()) {
+        textView->document()->setBaseUrl(QUrl(QStringLiteral("qrc:/")));
+        EmojiImageHandler::install(textView->document(), textView);
+    }
     QString renderText = text;
     if (!Qt::mightBeRichText(renderText)) {
         renderText = Qt::convertFromPlainText(renderText);
