@@ -7,6 +7,14 @@
 #include <QFrame>
 #include <QPointer>
 #include <QStackedWidget>
+#include <QList>
+#include <QPair>
+#include <QHostAddress>
+
+class QListWidget;
+class QLineEdit;
+class QPushButton;
+class QCheckBox;
 
 /*!
  * \brief 设置中心对话框，负责展示和修改平台偏好。
@@ -39,8 +47,17 @@ private:
     QWidget *createHotkeyPage();
     QWidget *createLockPage();
     QWidget *createMailPage();
+    void refreshSubnetList();
+    void handleSubnetAdd();
+    void handleSubnetRemove();
+    bool parseSubnetInput(const QString &text, QHostAddress &network, int &prefixLength) const;
 
     QPointer<ChatController> m_controller;
     QButtonGroup *m_navGroup = nullptr;
     QStackedWidget *m_stack = nullptr;
+    QListWidget *m_subnetList = nullptr;
+    QLineEdit *m_subnetInput = nullptr;
+    QPushButton *m_removeSubnetButton = nullptr;
+    QCheckBox *m_restrictSubnetCheck = nullptr;
+    QList<QPair<QHostAddress, int>> m_cachedSubnets;
 };

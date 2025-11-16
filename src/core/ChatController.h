@@ -74,6 +74,13 @@ struct GeneralSettings {
  * \brief �����������.
  */
 struct NetworkSettings {
+    quint16 searchPort = 9011;
+    QString organizationCode;
+    bool enableInterop = false;
+    quint16 interopPort = 2425;
+    bool bindNetworkInterface = false;
+    QString boundInterfaceId;
+    bool restrictToListedSubnets = false;
     bool autoRefresh = true;
     int refreshIntervalMinutes = 5;
 };
@@ -172,6 +179,7 @@ public slots:
     void requestPeerSharedFile(const QString &peerId, const QString &entryId);
     void shareCatalogToPeer(const QString &peerId);
     void addSubnet(const QHostAddress &network, int prefixLength);
+    void setSubnets(const QList<QPair<QHostAddress, int>> &subnets);
     void setActiveRoleId(const QString &roleId);
     void updateGeneralSettings(const GeneralSettings &settings);
     void updateNetworkSettings(const NetworkSettings &settings);

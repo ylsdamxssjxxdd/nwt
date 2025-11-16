@@ -1,17 +1,14 @@
-﻿#include "MainWindow.h"
+#include "MainWindow.h"
 #include "ProfileDialog.h"
 #include "SettingsDialog.h"
 #include "ShareCenterDialog.h"
 #include "StyleHelper.h"
 
 #include <QAbstractItemView>
-#include <QAbstractSocket>
 #include <QEvent>
 #include <QFileDialog>
 #include <QDateTime>
 #include <QHBoxLayout>
-#include <QHostAddress>
-#include <QInputDialog>
 #include <QItemSelectionModel>
 #include <QKeyEvent>
 #include <QPainter>
@@ -24,20 +21,7 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 
-namespace {
-int defaultPrefix(const QHostAddress &address) {
-    return address.protocol() == QAbstractSocket::IPv6Protocol ? 64 : 24;
-}
 
-QHostAddress normalizeNetwork(const QHostAddress &address, int prefixLength) {
-    if (address.protocol() == QAbstractSocket::IPv4Protocol && prefixLength >= 0 && prefixLength <= 32) {
-        const quint32 ip = address.toIPv4Address();
-        const quint32 mask = prefixLength == 0 ? 0 : 0xFFFFFFFFu << (32 - prefixLength);
-        return QHostAddress(ip & mask);
-    }
-    return address;
-}
-} // namespace
 
 MainWindow::MainWindow(ChatController *controller, QWidget *parent)
     : QMainWindow(parent), m_controller(controller) {
@@ -67,7 +51,6 @@ MainWindow::MainWindow(ChatController *controller, QWidget *parent)
     connect(m_controller, &ChatController::controllerWarning, this, &MainWindow::showStatus);
     connect(m_controller, &ChatController::roleChanged, this, [this]() { refreshProfileCard(); });
     connect(m_controller, &ChatController::profileUpdated, this, [this](const ProfileDetails &) { refreshProfileCard(); });
-    connect(m_addSubnetButton, &QPushButton::clicked, this, &MainWindow::handleAddSubnet);
 
     updatePeerPlaceholder();
 }
@@ -136,9 +119,6 @@ QWidget *MainWindow::buildChatPanel(QWidget *parent) {
     headerLayout->addLayout(headerInfo);
     headerLayout->addStretch();
 
-    m_addSubnetButton = new QPushButton(tr("添加子网"), header);
-    m_addSubnetButton->setObjectName("actionButton");
-    headerLayout->addWidget(m_addSubnetButton);
     layout->addWidget(header);
 
     auto *body = new QFrame(panel);
@@ -719,63 +699,4 @@ void MainWindow::openShareCenter() {
     m_shareDialog->activateWindow();
 }
 
-void MainWindow::handleAddSubnet() {
-    if (!m_controller) {
-        return;
-    }
 
-    bool ok = false;
-    const QString cidr =
-        QInputDialog::getText(this, tr("添加网段"), tr("请输入子网（示例 192.168.1.0/24）："), QLineEdit::Normal,
-                              QString(), &ok);
-    if (!ok) {
-        return;
-    }
-
-    const QString trimmed = cidr.trimmed();
-    if (trimmed.isEmpty()) {
-        showStatus(tr("子网不能为空"));
-        return;
-    }
-
-    const int slashIndex = trimmed.indexOf('/');
-    const QString ipText = (slashIndex == -1 ? trimmed : trimmed.left(slashIndex)).trimmed();
-    const QString prefixText = slashIndex == -1 ? QString() : trimmed.mid(slashIndex + 1).trimmed();
-
-    if (ipText.isEmpty()) {
-        showStatus(tr("格式应类似 192.168.1.0/24"));
-        return;
-    }
-
-    QHostAddress network(ipText);
-    if (network.isNull()) {
-        showStatus(tr("无效的地址: %1").arg(ipText));
-        return;
-    }
-
-    int prefixLength = -1;
-    if (prefixText.isEmpty()) {
-        prefixLength = defaultPrefix(network);
-    } else {
-        bool prefixOk = false;
-        prefixLength = prefixText.toInt(&prefixOk);
-        if (!prefixOk) {
-            showStatus(tr("无效的前缀: %1").arg(prefixText));
-            return;
-        }
-    }
-
-    const int maxPrefix = network.protocol() == QAbstractSocket::IPv6Protocol ? 128 : 32;
-    if (prefixLength < 0 || prefixLength > maxPrefix) {
-        showStatus(tr("前缀范围应为 0-%1").arg(maxPrefix));
-        return;
-    }
-
-    const QHostAddress normalized = normalizeNetwork(network, prefixLength);
-    m_controller->addSubnet(normalized, prefixLength);
-    if (slashIndex == -1) {
-        showStatus(tr("按照默认掩码添加 %1/%2").arg(normalized.toString()).arg(prefixLength));
-    } else {
-        showStatus(tr("已添加 %1/%2").arg(normalized.toString()).arg(prefixLength));
-    }
-}

@@ -1,6 +1,8 @@
 #include "SettingsDialog.h"
 #include "StyleHelper.h"
 
+#include <QAbstractItemView>
+#include <QAbstractSocket>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QCryptographicHash>
@@ -9,11 +11,15 @@
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QHostAddress>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
+#include <QNetworkInterface>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
+#include <QSpinBox>
 #include <QMessageBox>
 #include <QStyle>
 #include <QToolButton>
@@ -22,6 +28,23 @@
 namespace {
 QVBoxLayout *sectionLayout(QFrame *section) {
     return qobject_cast<QVBoxLayout *>(section->layout());
+}
+
+int defaultPrefix(const QHostAddress &address) {
+    return address.protocol() == QAbstractSocket::IPv6Protocol ? 64 : 24;
+}
+
+QHostAddress normalizeNetwork(const QHostAddress &address, int prefixLength) {
+    if (address.protocol() == QAbstractSocket::IPv4Protocol && prefixLength >= 0 && prefixLength <= 32) {
+        const quint32 ip = address.toIPv4Address();
+        const quint32 mask = prefixLength == 0 ? 0 : 0xFFFFFFFFu << (32 - prefixLength);
+        return QHostAddress(ip & mask);
+    }
+    return address;
+}
+
+QString subnetDisplay(const QPair<QHostAddress, int> &pair) {
+    return QStringLiteral("%1/%2").arg(pair.first.toString()).arg(pair.second);
 }
 } // namespace
 
@@ -237,34 +260,121 @@ QWidget *SettingsDialog::createNetworkPage() {
     layout->setContentsMargins(32, 24, 32, 24);
     layout->setSpacing(20);
 
-    auto *networkSection = createSection(tr("网络设置"));
-    auto *networkLayout = sectionLayout(networkSection);
-    auto *netButton = new QPushButton(tr("网络设置"), networkSection);
-    netButton->setObjectName("actionBtn");
-    networkLayout->addWidget(netButton, 0, Qt::AlignLeft);
-    layout->addWidget(networkSection);
+    auto *searchSection = createSection(tr("搜索设置"));
+    auto *searchLayout = sectionLayout(searchSection);
+    auto *searchGrid = new QGridLayout();
+    searchGrid->setHorizontalSpacing(18);
+    searchGrid->setVerticalSpacing(12);
+    searchGrid->setColumnStretch(1, 1);
+    auto addSearchRow = [searchGrid, searchSection](int row, const QString &labelText, QWidget *editor) {
+        auto *label = new QLabel(labelText, searchSection);
+        label->setMinimumWidth(80);
+        searchGrid->addWidget(label, row, 0);
+        searchGrid->addWidget(editor, row, 1);
+    };
+    auto *searchPort = new QSpinBox(searchSection);
+    searchPort->setRange(1, 65535);
+    searchPort->setObjectName(QStringLiteral("net_searchPort"));
+    addSearchRow(0, tr("端口："), searchPort);
 
-    auto *segmentSection = createSection(tr("其他网段联系人"));
-    auto *segmentLayout = sectionLayout(segmentSection);
-    const QVector<QString> buttons = {tr("网段设置"), tr("网段黑名单")};
-    for (const QString &text : buttons) {
-        auto *btn = new QPushButton(text, segmentSection);
-        btn->setObjectName("actionBtn");
-        segmentLayout->addWidget(btn, 0, Qt::AlignLeft);
+    auto *orgCode = new QLineEdit(searchSection);
+    orgCode->setObjectName(QStringLiteral("net_orgCode"));
+    orgCode->setPlaceholderText(tr("用于区分组织/部门（可选）"));
+    addSearchRow(1, tr("组织号："), orgCode);
+    searchLayout->addLayout(searchGrid);
+
+    auto *searchHint = new QLabel(tr("修改搜索设置后需要重新启动客户端才能生效。"), searchSection);
+    searchHint->setObjectName(QStringLiteral("hintLabel"));
+    searchHint->setWordWrap(true);
+    searchLayout->addWidget(searchHint);
+    layout->addWidget(searchSection);
+
+    auto *interopSection = createSection(tr("消息互通"));
+    auto *interopLayout = sectionLayout(interopSection);
+    auto *interopCheck = new QCheckBox(tr("开启与传统客户端互通"), interopSection);
+    interopCheck->setObjectName(QStringLiteral("net_enableInterop"));
+    interopLayout->addWidget(interopCheck);
+    auto *interopRow = new QHBoxLayout();
+    auto *interopLabel = new QLabel(tr("互通端口："), interopSection);
+    auto *interopPort = new QSpinBox(interopSection);
+    interopPort->setRange(1, 65535);
+    interopPort->setObjectName(QStringLiteral("net_interopPort"));
+    interopRow->addWidget(interopLabel);
+    interopRow->addWidget(interopPort, 0);
+    interopRow->addStretch();
+    interopLayout->addLayout(interopRow);
+    layout->addWidget(interopSection);
+
+    auto *bindingSection = createSection(tr("网卡绑定"));
+    auto *bindingLayout = sectionLayout(bindingSection);
+    auto *bindCheck = new QCheckBox(tr("启用网卡绑定"), bindingSection);
+    bindCheck->setObjectName(QStringLiteral("net_bindInterface"));
+    bindingLayout->addWidget(bindCheck);
+    auto *bindRow = new QHBoxLayout();
+    auto *bindLabel = new QLabel(tr("指定网卡："), bindingSection);
+    auto *interfaceCombo = new QComboBox(bindingSection);
+    interfaceCombo->setObjectName(QStringLiteral("net_interfaceCombo"));
+    interfaceCombo->setEnabled(false);
+    interfaceCombo->addItem(tr("自动选择"), QString());
+    const QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
+    for (const QNetworkInterface &iface : interfaces) {
+        if (!iface.flags().testFlag(QNetworkInterface::IsUp) || !iface.flags().testFlag(QNetworkInterface::IsRunning)) {
+            continue;
+        }
+        interfaceCombo->addItem(iface.humanReadableName(), iface.name());
     }
+    bindRow->addWidget(bindLabel);
+    bindRow->addWidget(interfaceCombo, 1);
+    bindingLayout->addLayout(bindRow);
+    layout->addWidget(bindingSection);
+
+    auto *segmentSection = createSection(tr("网段设置"));
+    auto *segmentLayout = sectionLayout(segmentSection);
+    auto *segmentIntro = new QLabel(tr("在此添加需要扫描的网段，系统会定期探测这些网段内的联系人。"), segmentSection);
+    segmentIntro->setWordWrap(true);
+    segmentLayout->addWidget(segmentIntro);
+
+    auto *segmentRow = new QHBoxLayout();
+    m_subnetInput = new QLineEdit(segmentSection);
+    m_subnetInput->setObjectName(QStringLiteral("net_segmentInput"));
+    m_subnetInput->setPlaceholderText(tr("示例：192.168.1.0/24 或 192.168.1.1"));
+    auto *addButton = new QPushButton(tr("添加"), segmentSection);
+    addButton->setObjectName(QStringLiteral("net_segmentAdd"));
+    m_removeSubnetButton = new QPushButton(tr("删除"), segmentSection);
+    m_removeSubnetButton->setObjectName(QStringLiteral("net_segmentRemove"));
+    m_removeSubnetButton->setEnabled(false);
+    segmentRow->addWidget(m_subnetInput, 1);
+    segmentRow->addWidget(addButton);
+    segmentRow->addWidget(m_removeSubnetButton);
+    segmentLayout->addLayout(segmentRow);
+
+    m_subnetList = new QListWidget(segmentSection);
+    m_subnetList->setObjectName(QStringLiteral("net_segmentList"));
+    m_subnetList->setSelectionMode(QAbstractItemView::SingleSelection);
+    segmentLayout->addWidget(m_subnetList);
+
+    m_restrictSubnetCheck = new QCheckBox(tr("仅与以上网段保持网络连接"), segmentSection);
+    m_restrictSubnetCheck->setObjectName(QStringLiteral("net_segmentRestrict"));
+    segmentLayout->addWidget(m_restrictSubnetCheck);
+
+    auto *segmentHint = new QLabel(tr("新增或删除网段后需重新启动客户端方可完全生效。"), segmentSection);
+    segmentHint->setObjectName(QStringLiteral("hintLabel"));
+    segmentHint->setWordWrap(true);
+    segmentLayout->addWidget(segmentHint);
     layout->addWidget(segmentSection);
 
-    auto *remoteSection = createSection(tr("远程密码"));
-    auto *remoteLayout = sectionLayout(remoteSection);
-    auto *passwordBtn = new QPushButton(tr("设置密码"), remoteSection);
-    passwordBtn->setObjectName("actionBtn");
-    remoteLayout->addWidget(passwordBtn, 0, Qt::AlignLeft);
-    layout->addWidget(remoteSection);
+    connect(addButton, &QPushButton::clicked, this, &SettingsDialog::handleSubnetAdd);
+    connect(m_removeSubnetButton, &QPushButton::clicked, this, &SettingsDialog::handleSubnetRemove);
+    connect(m_subnetList, &QListWidget::currentRowChanged, this, [this](int row) {
+        if (m_removeSubnetButton) {
+            m_removeSubnetButton->setEnabled(row >= 0);
+        }
+    });
 
     auto *refreshSection = createSection(tr("自动刷新"));
     auto *refreshLayout = sectionLayout(refreshSection);
     auto *refreshRow = new QHBoxLayout();
-    auto *autoRefresh = new QCheckBox(tr("开启自动刷新"), refreshSection);
+    auto *autoRefresh = new QCheckBox(tr("自动刷新联系人"), refreshSection);
     autoRefresh->setObjectName(QStringLiteral("net_autoRefresh"));
     auto *combo = new QComboBox(refreshSection);
     combo->setObjectName(QStringLiteral("net_refreshCombo"));
@@ -274,7 +384,7 @@ QWidget *SettingsDialog::createNetworkPage() {
     refreshLayout->addLayout(refreshRow);
 
     auto *comboRow = new QHBoxLayout();
-    auto *label = new QLabel(tr("刷新时间："), refreshSection);
+    auto *label = new QLabel(tr("刷新频率："), refreshSection);
     comboRow->addWidget(label);
     comboRow->addWidget(combo, 0);
     comboRow->addStretch();
@@ -283,9 +393,9 @@ QWidget *SettingsDialog::createNetworkPage() {
     layout->addWidget(refreshSection);
     layout->addStretch(1);
     bindNetworkSettings(page);
+    refreshSubnetList();
     return page;
 }
-
 QWidget *SettingsDialog::createNotificationPage() {
     auto *page = new QWidget();
     auto *layout = new QVBoxLayout(page);
@@ -634,6 +744,95 @@ void SettingsDialog::bindNetworkSettings(QWidget *section) {
         return;
     }
     const NetworkSettings settings = m_controller->settings().network;
+    if (auto *portSpin = section->findChild<QSpinBox *>(QStringLiteral("net_searchPort"))) {
+        portSpin->setValue(settings.searchPort);
+        connect(portSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
+            if (!m_controller) {
+                return;
+            }
+            auto prefs = m_controller->settings().network;
+            prefs.searchPort = static_cast<quint16>(value);
+            m_controller->updateNetworkSettings(prefs);
+        });
+    }
+    if (auto *orgEdit = section->findChild<QLineEdit *>(QStringLiteral("net_orgCode"))) {
+        orgEdit->setText(settings.organizationCode);
+        connect(orgEdit, &QLineEdit::editingFinished, this, [this, orgEdit]() {
+            if (!m_controller) {
+                return;
+            }
+            auto prefs = m_controller->settings().network;
+            prefs.organizationCode = orgEdit->text().trimmed();
+            m_controller->updateNetworkSettings(prefs);
+        });
+    }
+    if (auto *interopCheck = section->findChild<QCheckBox *>(QStringLiteral("net_enableInterop"))) {
+        interopCheck->setChecked(settings.enableInterop);
+        connect(interopCheck, &QCheckBox::toggled, this, [this](bool state) {
+            if (!m_controller) {
+                return;
+            }
+            auto prefs = m_controller->settings().network;
+            prefs.enableInterop = state;
+            m_controller->updateNetworkSettings(prefs);
+        });
+    }
+    if (auto *interopPort = section->findChild<QSpinBox *>(QStringLiteral("net_interopPort"))) {
+        interopPort->setValue(settings.interopPort);
+        connect(interopPort, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
+            if (!m_controller) {
+                return;
+            }
+            auto prefs = m_controller->settings().network;
+            prefs.interopPort = static_cast<quint16>(value);
+            m_controller->updateNetworkSettings(prefs);
+        });
+    }
+    if (auto *bindCheck = section->findChild<QCheckBox *>(QStringLiteral("net_bindInterface"))) {
+        auto *combo = section->findChild<QComboBox *>(QStringLiteral("net_interfaceCombo"));
+        bindCheck->setChecked(settings.bindNetworkInterface);
+        if (combo) {
+            combo->setEnabled(settings.bindNetworkInterface);
+            int foundIndex = 0;
+            for (int i = 0; i < combo->count(); ++i) {
+                if (combo->itemData(i).toString() == settings.boundInterfaceId) {
+                    foundIndex = i;
+                    break;
+                }
+            }
+            combo->setCurrentIndex(foundIndex);
+            connect(combo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, combo](int index) {
+                if (!m_controller) {
+                    return;
+                }
+                auto prefs = m_controller->settings().network;
+                prefs.boundInterfaceId = combo->itemData(index).toString();
+                m_controller->updateNetworkSettings(prefs);
+            });
+        }
+        connect(bindCheck, &QCheckBox::toggled, this, [this, combo](bool state) {
+            if (!m_controller) {
+                return;
+            }
+            auto prefs = m_controller->settings().network;
+            prefs.bindNetworkInterface = state;
+            m_controller->updateNetworkSettings(prefs);
+            if (combo) {
+                combo->setEnabled(state);
+            }
+        });
+    }
+    if (m_restrictSubnetCheck) {
+        m_restrictSubnetCheck->setChecked(settings.restrictToListedSubnets);
+        connect(m_restrictSubnetCheck, &QCheckBox::toggled, this, [this](bool state) {
+            if (!m_controller) {
+                return;
+            }
+            auto prefs = m_controller->settings().network;
+            prefs.restrictToListedSubnets = state;
+            m_controller->updateNetworkSettings(prefs);
+        });
+    }
     if (auto *autoRefresh = section->findChild<QCheckBox *>(QStringLiteral("net_autoRefresh"))) {
         autoRefresh->setChecked(settings.autoRefresh);
         connect(autoRefresh, &QCheckBox::toggled, this, [this](bool state) {
@@ -693,6 +892,104 @@ void SettingsDialog::bindNetworkSettings(QWidget *section) {
             m_controller->updateNetworkSettings(prefs);
         });
     }
+}
+
+void SettingsDialog::refreshSubnetList() {
+    if (!m_controller || !m_subnetList) {
+        return;
+    }
+    const int previousRow = m_subnetList->currentRow();
+    m_cachedSubnets = m_controller->configuredSubnets();
+    m_subnetList->clear();
+    for (const auto &pair : std::as_const(m_cachedSubnets)) {
+        m_subnetList->addItem(subnetDisplay(pair));
+    }
+    if (m_subnetList->count() == 0) {
+        if (m_removeSubnetButton) {
+            m_removeSubnetButton->setEnabled(false);
+        }
+        return;
+    }
+    int targetRow = previousRow;
+    if (targetRow >= m_subnetList->count()) {
+        targetRow = m_subnetList->count() - 1;
+    }
+    if (targetRow < 0) {
+        targetRow = 0;
+    }
+    m_subnetList->setCurrentRow(targetRow);
+}
+
+void SettingsDialog::handleSubnetAdd() {
+    if (!m_controller || !m_subnetInput) {
+        return;
+    }
+    QHostAddress network;
+    int prefix = -1;
+    if (!parseSubnetInput(m_subnetInput->text(), network, prefix)) {
+        QMessageBox::warning(this, tr("网段设置"), tr("请输入合法的网段，例如 192.168.1.0/24。"));
+        return;
+    }
+    auto next = m_cachedSubnets;
+    const QString token = subnetDisplay(qMakePair(network, prefix));
+    for (const auto &pair : std::as_const(next)) {
+        if (subnetDisplay(pair) == token) {
+            QMessageBox::information(this, tr("网段设置"), tr("该网段已存在，无需重复添加。"));
+            return;
+        }
+    }
+    next.append(qMakePair(network, prefix));
+    m_controller->setSubnets(next);
+    m_subnetInput->clear();
+    refreshSubnetList();
+}
+
+void SettingsDialog::handleSubnetRemove() {
+    if (!m_controller || !m_subnetList) {
+        return;
+    }
+    const int row = m_subnetList->currentRow();
+    if (row < 0 || row >= m_cachedSubnets.size()) {
+        return;
+    }
+    auto next = m_cachedSubnets;
+    next.removeAt(row);
+    m_controller->setSubnets(next);
+    refreshSubnetList();
+}
+
+bool SettingsDialog::parseSubnetInput(const QString &text, QHostAddress &network, int &prefixLength) const {
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty()) {
+        return false;
+    }
+    const int slashIndex = trimmed.indexOf('/');
+    const QString ipText = (slashIndex == -1 ? trimmed : trimmed.left(slashIndex)).trimmed();
+    const QString prefixText = slashIndex == -1 ? QString() : trimmed.mid(slashIndex + 1).trimmed();
+    if (ipText.isEmpty()) {
+        return false;
+    }
+    QHostAddress candidate(ipText);
+    if (candidate.isNull()) {
+        return false;
+    }
+    int prefix = -1;
+    if (prefixText.isEmpty()) {
+        prefix = defaultPrefix(candidate);
+    } else {
+        bool ok = false;
+        prefix = prefixText.toInt(&ok);
+        if (!ok) {
+            return false;
+        }
+    }
+    const int maxPrefix = candidate.protocol() == QAbstractSocket::IPv6Protocol ? 128 : 32;
+    if (prefix < 0 || prefix > maxPrefix) {
+        return false;
+    }
+    network = normalizeNetwork(candidate, prefix);
+    prefixLength = prefix;
+    return true;
 }
 
 void SettingsDialog::bindNotificationSettings(QWidget *section) {
@@ -916,3 +1213,4 @@ void SettingsDialog::bindMailSettings(QWidget *section) {
     bindCheck(QStringLiteral("mail_popup"), mail.popupOnMail,
               [](MailSettings &cfg, bool v) { cfg.popupOnMail = v; });
 }
+

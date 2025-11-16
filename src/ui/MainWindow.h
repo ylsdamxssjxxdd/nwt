@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "ShareCenterDialog.h"
 #include "core/ChatController.h"
@@ -48,8 +48,6 @@ private slots:
      * \param text 要展示的文字。
      */
     void showStatus(const QString &text);
-    /*! \brief 弹出对话框以添加需要扫描的子网。 */
-    void handleAddSubnet();
     /*! \brief 打开设置中心。 */
     void openSettingsDialog();
     /*! \brief 打开个人资料对话框。 */
@@ -65,7 +63,6 @@ private slots:
     void openShareCenter();
 
 protected:
-    /*! \brief ������Ϣ�������������ؼ���¼��� */
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
@@ -97,13 +94,10 @@ private:
     void refreshProfileCard();
     /*! \brief �����Ի�����ı���ʾ���� */
     void updateChatHeader(const QString &displayName);
-    /*! \brief �����������ӾԻ���б����ݵ���ֵ���� */
     void appendChatBubble(const QString &timestamp, const QString &sender, const QString &text, bool outgoing);
     /*! \brief ��Ϣ��б�����ʱ������ָʾ�� */
     void appendTimelineHint(const QString &timestamp, const QString &text);
-    /*! \brief ��ȷ��Ϣ������������ռλ���Ĵ������� */
     void ensureChatAreaForNewEntry();
-    /*! \brief �����Ϣ���������������еļ����λ���� */
     void scrollToLatestMessage() const;
 ChatController *m_controller = nullptr;
     QWidget *m_contactPanel = nullptr;
@@ -122,7 +116,6 @@ ChatController *m_controller = nullptr;
     QVBoxLayout *m_messageLayout = nullptr;
     QTextEdit *m_inputEdit = nullptr;
     QPushButton *m_sendButton = nullptr;
-    QPushButton *m_addSubnetButton = nullptr;
     QPushButton *m_fileButton = nullptr;
     QPushButton *m_shareButton = nullptr;
     QLabel *m_statusLabel = nullptr;

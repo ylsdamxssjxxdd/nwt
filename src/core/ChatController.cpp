@@ -1,5 +1,6 @@
 #include "ChatController.h"
 
+#include <QAbstractSocket>
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDateTime>
@@ -11,6 +12,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
+#include <QSet>
 #include <QUuid>
 #include <limits>
 
@@ -63,6 +65,17 @@ QJsonObject generalToJson(const GeneralSettings &settings) {
 
 NetworkSettings parseNetworkSettings(const QJsonObject &object) {
     NetworkSettings settings;
+    settings.searchPort =
+        static_cast<quint16>(jsonInt(object, QStringLiteral("searchPort"), settings.searchPort));
+    settings.organizationCode = object.value(QStringLiteral("organizationCode")).toString(settings.organizationCode);
+    settings.enableInterop = jsonBool(object, QStringLiteral("enableInterop"), settings.enableInterop);
+    settings.interopPort =
+        static_cast<quint16>(jsonInt(object, QStringLiteral("interopPort"), settings.interopPort));
+    settings.bindNetworkInterface =
+        jsonBool(object, QStringLiteral("bindInterface"), settings.bindNetworkInterface);
+    settings.boundInterfaceId = object.value(QStringLiteral("interfaceId")).toString(settings.boundInterfaceId);
+    settings.restrictToListedSubnets =
+        jsonBool(object, QStringLiteral("restrictToListedSubnets"), settings.restrictToListedSubnets);
     settings.autoRefresh = jsonBool(object, QStringLiteral("autoRefresh"), settings.autoRefresh);
     settings.refreshIntervalMinutes = jsonInt(object, QStringLiteral("refreshInterval"), settings.refreshIntervalMinutes);
     return settings;
@@ -70,6 +83,13 @@ NetworkSettings parseNetworkSettings(const QJsonObject &object) {
 
 QJsonObject networkSettingsToJson(const NetworkSettings &settings) {
     return {
+        {QStringLiteral("searchPort"), static_cast<int>(settings.searchPort)},
+        {QStringLiteral("organizationCode"), settings.organizationCode},
+        {QStringLiteral("enableInterop"), settings.enableInterop},
+        {QStringLiteral("interopPort"), static_cast<int>(settings.interopPort)},
+        {QStringLiteral("bindInterface"), settings.bindNetworkInterface},
+        {QStringLiteral("interfaceId"), settings.boundInterfaceId},
+        {QStringLiteral("restrictToListedSubnets"), settings.restrictToListedSubnets},
         {QStringLiteral("autoRefresh"), settings.autoRefresh},
         {QStringLiteral("refreshInterval"), settings.refreshIntervalMinutes}
     };
@@ -333,16 +353,41 @@ void ChatController::shareCatalogToPeer(const QString &peerId) {
 }
 
 void ChatController::addSubnet(const QHostAddress &network, int prefixLength) {
+    QList<QPair<QHostAddress, int>> next = m_subnets;
     const QString token = QStringLiteral("%1/%2").arg(network.toString()).arg(prefixLength);
-    for (const auto &pair : std::as_const(m_subnets)) {
+    for (const auto &pair : std::as_const(next)) {
         const QString existing = QStringLiteral("%1/%2").arg(pair.first.toString()).arg(pair.second);
         if (existing == token) {
             return;
         }
     }
-    m_subnets.append(qMakePair(network, prefixLength));
+    next.append(qMakePair(network, prefixLength));
+    setSubnets(next);
+}
+
+void ChatController::setSubnets(const QList<QPair<QHostAddress, int>> &subnets) {
+    QList<QPair<QHostAddress, int>> sanitized;
+    QSet<QString> seen;
+    for (const auto &pair : subnets) {
+        if (pair.first.isNull()) {
+            continue;
+        }
+        const int maxPrefix = pair.first.protocol() == QAbstractSocket::IPv6Protocol ? 128 : 32;
+        if (pair.second < 0 || pair.second > maxPrefix) {
+            continue;
+        }
+        const QString token = QStringLiteral("%1/%2").arg(pair.first.toString()).arg(pair.second);
+        if (seen.contains(token)) {
+            continue;
+        }
+        seen.insert(token);
+        sanitized.append(pair);
+    }
+    m_subnets = sanitized;
     m_discovery.setSubnets(m_subnets);
-    m_discovery.probeSubnet(network, prefixLength);
+    for (const auto &range : std::as_const(m_subnets)) {
+        m_discovery.probeSubnet(range.first, range.second);
+    }
     m_discovery.announceOnline();
     persistSettings();
 }
