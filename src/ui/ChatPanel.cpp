@@ -209,31 +209,13 @@ QString ChatPanel::inputText() const {
     if (!m_inputEdit) {
         return QString();
     }
-    QString result;
-    const auto *doc = m_inputEdit->document();
-    for (QTextBlock block = doc->begin(); block != doc->end(); block = block.next()) {
-        for (auto it = block.begin(); !it.atEnd(); ++it) {
-            const QTextFragment fragment = it.fragment();
-            if (!fragment.isValid()) {
-                continue;
-            }
-            const QTextCharFormat format = fragment.charFormat();
-            if (format.isImageFormat()) {
-                const QTextImageFormat imageFormat = format.toImageFormat();
-                QString tips = imageFormat.property(QTextFormat::UserProperty).toString();
-                if (tips.isEmpty()) {
-                    tips = imageFormat.name();
-                }
-                result.append(QStringLiteral("[%1]").arg(tips));
-            } else {
-                result.append(fragment.text());
-            }
-        }
-        if (block.next().isValid()) {
-            result.append('\n');
-        }
+    const QString html = m_inputEdit->toHtml().trimmed();
+    const QString plain = m_inputEdit->toPlainText().trimmed();
+    const bool hasImage = html.contains(QStringLiteral("<img"), Qt::CaseInsensitive);
+    if (plain.isEmpty() && !hasImage) {
+        return QString();
     }
-    return result.trimmed();
+    return html;
 }
 
 void ChatPanel::clearInput() {
@@ -299,11 +281,16 @@ void ChatPanel::appendChatBubble(const QString &timestamp, const QString &sender
         bubbleLayout->addWidget(senderLabel);
     }
 
-    auto *textLabel = new QLabel(text, bubble);
+    auto *textLabel = new QLabel(bubble);
     textLabel->setObjectName("bubbleText");
     textLabel->setWordWrap(true);
     textLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    textLabel->setTextFormat(Qt::PlainText);
+    QString renderText = text;
+    if (!Qt::mightBeRichText(renderText)) {
+        renderText = Qt::convertFromPlainText(renderText);
+    }
+    textLabel->setTextFormat(Qt::RichText);
+    textLabel->setText(renderText);
     bubbleLayout->addWidget(textLabel);
 
     auto *timeLabel = new QLabel(timestamp, bubble);
@@ -377,6 +364,13 @@ void ChatPanel::insertEmotionText(const QString &tips, const QString &imageResou
     }
     if (imageResource.isEmpty()) {
         return;
+    }
+    QTextDocument *doc = m_inputEdit->document();
+    if (!doc->resource(QTextDocument::ImageResource, QUrl(imageResource)).isValid()) {
+        QPixmap pix(imageResource);
+        if (!pix.isNull()) {
+            doc->addResource(QTextDocument::ImageResource, QUrl(imageResource), pix);
+        }
     }
     auto cursor = m_inputEdit->textCursor();
     QTextImageFormat imageFormat;

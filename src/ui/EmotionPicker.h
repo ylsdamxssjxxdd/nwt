@@ -31,6 +31,7 @@ private:
     void loadEmotions();
     void buildGrid();
     QString iconPathFor(const QString &fileName) const;
+    bool resourceExists(const QString &fileName) const;
 
     QVector<EmotionItem> m_emotions;
     QGridLayout *m_gridLayout = nullptr;

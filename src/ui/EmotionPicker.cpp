@@ -66,7 +66,7 @@ void EmotionPicker::loadEmotions() {
             if (item.imagePath.isEmpty()) {
                 item.imagePath = item.thumbPath;
             }
-            if (!item.tips.isEmpty() && !item.thumbPath.isEmpty()) {
+            if (!item.tips.isEmpty() && resourceExists(item.thumbPath)) {
                 m_emotions.append(item);
             }
         }
@@ -82,10 +82,10 @@ void EmotionPicker::buildGrid() {
     int added = 0;
     const int buttonSide = kIconSize + kButtonPadding;
     for (const auto &emotion : m_emotions) {
-        const QPixmap pix(iconPathFor(emotion.thumbPath));
-        if (pix.isNull()) {
+        if (!resourceExists(emotion.thumbPath)) {
             continue;
         }
+        const QPixmap pix(iconPathFor(emotion.thumbPath));
         auto *button = new QToolButton(m_container);
         button->setAutoRaise(true);
         button->setIcon(QIcon(pix));
@@ -114,4 +114,9 @@ void EmotionPicker::buildGrid() {
 
 QString EmotionPicker::iconPathFor(const QString &fileName) const {
     return QString::fromUtf8(kEmotionResourcePrefix) + fileName;
+}
+
+bool EmotionPicker::resourceExists(const QString &fileName) const {
+    QFile res(iconPathFor(fileName));
+    return res.exists();
 }
