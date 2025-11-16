@@ -15,6 +15,7 @@ set(SOURCES
     src/core/DiscoveryService.cpp
     src/core/PeerDirectory.cpp
     src/core/MessageRouter.cpp
+    src/core/ShareManager.cpp
     src/core/ChatController.cpp
     src/ui/MainWindow.cpp
     src/ui/SettingsDialog.cpp

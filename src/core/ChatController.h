@@ -3,13 +3,13 @@
 #include "DiscoveryService.h"
 #include "MessageRouter.h"
 #include "PeerDirectory.h"
+#include "ShareManager.h"
 
 #include <QHostAddress>
 #include <QHash>
 #include <QJsonObject>
 #include <QList>
 #include <QPair>
-#include <QMetaType>
 #include <QStringList>
 #include <QVector>
 
@@ -22,17 +22,6 @@ struct RoleProfile {
     QString signature;
     QString avatarLetter;
 };
-
-/*!
- * \brief �ļ������е�������Ϣ.
- */
-struct SharedFileInfo {
-    QString entryId;
-    QString name;
-    quint64 size = 0;
-    QString filePath;
-};
-Q_DECLARE_METATYPE(SharedFileInfo)
 
 /*!
  * \brief 个人资料信息。
@@ -216,9 +205,6 @@ private:
     void sendShareCatalogToPeer(const PeerInfo &peer);
     void handleShareRequest(const PeerInfo &peer, const QJsonObject &payload);
     void handleShareDownload(const PeerInfo &peer, const QJsonObject &payload);
-    QList<SharedFileInfo> collectLocalShares();
-    QString saveIncomingFile(const QString &fileName, const QByteArray &data);
-    QString buildShareEntryId(const QString &filePath) const;
     ProfileDetails parseProfileObject(const QJsonObject &object) const;
     QJsonObject profileToJson(const ProfileDetails &details) const;
 
@@ -232,7 +218,6 @@ private:
     QList<QPair<QHostAddress, int>> m_blockedSubnets;
     AppSettings m_settings;
     QVector<RoleProfile> m_roles;
-    QHash<QString, SharedFileInfo> m_localShareIndex;
-    QHash<QString, QList<SharedFileInfo>> m_remoteShareCatalogs;
+    ShareManager m_shareManager;
     bool m_hasStoredRole = false;
 };

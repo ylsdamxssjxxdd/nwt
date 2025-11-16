@@ -2,16 +2,13 @@
 
 #include <QAbstractSocket>
 #include <QCoreApplication>
-#include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
-#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QStandardPaths>
 #include <QSet>
 #include <QUuid>
 #include <limits>
@@ -487,7 +484,7 @@ void ChatController::updateMailSettings(const MailSettings &settings) {
 
 void ChatController::updateSharedDirectories(const QStringList &directories) {
     m_settings.sharedDirectories = directories;
-    collectLocalShares();
+    m_shareManager.collectLocalShares(m_settings.sharedDirectories);
     persistSettings();
     emit preferencesChanged(m_settings);
 }
@@ -595,7 +592,7 @@ void ChatController::loadSettings() {
         m_settings.profile.ip = QStringLiteral("192.168.0.2");
     }
     m_displayName = m_settings.profile.name;
-    collectLocalShares();
+    m_shareManager.collectLocalShares(m_settings.sharedDirectories);
 }
 
 void ChatController::persistSettings() {
@@ -707,12 +704,17 @@ void ChatController::handleFileMessage(const PeerInfo &peer, const QJsonObject &
     if (fileName.isEmpty() || data.isEmpty()) {
         return;
     }
-    const QString localPath = saveIncomingFile(fileName, data);
-    if (!localPath.isEmpty()) {
-        const QString roleName = payload.value(QStringLiteral("roleName")).toString(peer.displayName);
-        emit fileReceived(peer, roleName, fileName, localPath);
-        emit statusInfo(tr("已保存来自 %1 的文件 %2").arg(peer.displayName, fileName));
+    QString errorString;
+    const QString localPath = m_shareManager.saveIncomingFile(fileName, data, &errorString);
+    if (localPath.isEmpty()) {
+        if (!errorString.isEmpty()) {
+            emit controllerWarning(tr("无法保存文件: %1").arg(errorString));
+        }
+        return;
     }
+    const QString roleName = payload.value(QStringLiteral("roleName")).toString(peer.displayName);
+    emit fileReceived(peer, roleName, fileName, localPath);
+    emit statusInfo(tr("已保存来自 %1 的文件 %2").arg(peer.displayName, fileName));
 }
 
 void ChatController::handleShareCatalog(const PeerInfo &peer, const QJsonObject &payload) {
@@ -726,7 +728,7 @@ void ChatController::handleShareCatalog(const PeerInfo &peer, const QJsonObject 
         info.size = static_cast<quint64>(entry.value(QStringLiteral("size")).toDouble());
         files.append(info);
     }
-    m_remoteShareCatalogs.insert(peer.id, files);
+    m_shareManager.updateRemoteCatalog(peer.id, files);
     emit shareCatalogReceived(peer.id, files);
 }
 
@@ -739,16 +741,16 @@ void ChatController::handleShareDownload(const PeerInfo &peer, const QJsonObject
     if (entryId.isEmpty()) {
         return;
     }
-    if (!m_localShareIndex.contains(entryId)) {
+    if (!m_shareManager.hasLocalEntry(entryId)) {
         emit controllerWarning(tr("共享条目不存在或已失效"));
         return;
     }
-    const SharedFileInfo info = m_localShareIndex.value(entryId);
+    const SharedFileInfo info = m_shareManager.localEntry(entryId);
     sendFileToPeer(peer.id, info.filePath);
 }
 
 void ChatController::sendShareCatalogToPeer(const PeerInfo &peer) {
-    const QList<SharedFileInfo> files = collectLocalShares();
+    const QList<SharedFileInfo> files = m_shareManager.collectLocalShares(m_settings.sharedDirectories);
     QJsonArray array;
     for (const SharedFileInfo &info : files) {
         array.append(QJsonObject{
@@ -762,63 +764,6 @@ void ChatController::sendShareCatalogToPeer(const PeerInfo &peer) {
         {QStringLiteral("files"), array}
     };
     m_router.sendSharePayload(peer, payload);
-}
-
-QList<SharedFileInfo> ChatController::collectLocalShares() {
-    QList<SharedFileInfo> files;
-    m_localShareIndex.clear();
-    for (const QString &path : m_settings.sharedDirectories) {
-        QDir dir(path);
-        if (!dir.exists()) {
-            continue;
-        }
-        const QFileInfoList fileInfos = dir.entryInfoList(QDir::Files | QDir::Readable, QDir::Name);
-        for (const QFileInfo &info : fileInfos) {
-            SharedFileInfo entry;
-            entry.name = info.fileName();
-            entry.size = static_cast<quint64>(info.size());
-            entry.filePath = info.absoluteFilePath();
-            entry.entryId = buildShareEntryId(entry.filePath);
-            files.append(entry);
-            m_localShareIndex.insert(entry.entryId, entry);
-        }
-    }
-    return files;
-}
-
-QString ChatController::saveIncomingFile(const QString &fileName, const QByteArray &data) {
-    QString baseDir = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
-    if (baseDir.isEmpty()) {
-        baseDir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("downloads"));
-    }
-    QDir dir(baseDir);
-    if (!dir.exists()) {
-        dir.mkpath(QStringLiteral("."));
-    }
-
-    QString resolvedName = fileName;
-    QString targetPath = dir.filePath(resolvedName);
-    int suffix = 1;
-    while (QFile::exists(targetPath)) {
-        const QString base = QFileInfo(fileName).completeBaseName();
-        const QString ext = QFileInfo(fileName).suffix();
-        resolvedName = QStringLiteral("%1_%2.%3").arg(base).arg(suffix++).arg(ext);
-        targetPath = dir.filePath(resolvedName);
-    }
-
-    QFile file(targetPath);
-    if (!file.open(QIODevice::WriteOnly)) {
-        emit controllerWarning(tr("无法保存文件: %1").arg(file.errorString()));
-        return {};
-    }
-    file.write(data);
-    file.close();
-    return targetPath;
-}
-
-QString ChatController::buildShareEntryId(const QString &filePath) const {
-    const QByteArray hash = QCryptographicHash::hash(filePath.toUtf8(), QCryptographicHash::Sha1);
-    return QString::fromLatin1(hash.toHex());
 }
 
 ProfileDetails ChatController::parseProfileObject(const QJsonObject &object) const {
