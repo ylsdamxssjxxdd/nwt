@@ -1,0 +1,92 @@
+#contactPanel {
+    background: #fff6dc;
+    border-right: 1px solid #e3c779;
+    color: #5a4e3b;
+}
+#profileCard {
+    background: #fbeab6;
+    border-bottom: 1px solid #f4d98e;
+}
+#avatarLabel {
+    background: #4a90e2;
+    color: #ffffff;
+    border-radius: 10px;
+    font-size: 26px;
+    font-weight: 600;
+    border: 2px solid transparent;
+}
+#avatarLabel:hover {
+    background: #5aa3ff;
+    border-color: rgba(255, 255, 255, 0.55);
+}
+#avatarLabel:pressed {
+    background: #3372c8;
+}
+#profileName {
+    font-size: 18px;
+    color: #5a4e3b;
+    font-weight: 600;
+}
+#profileSignature {
+    color: #836c3e;
+    font-size: 13px;
+}
+#statusDot {
+    background: #3bc15b;
+    border-radius: 6px;
+}
+QToolButton#statusDropdown {
+    border: none;
+    color: #b77a13;
+}
+#searchRow {
+    background: #fdf1c8;
+}
+#searchField {
+    border: 1px solid #f1c966;
+    border-radius: 18px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.9);
+}
+#tabBar {
+    background: #f0d796;
+    border-top: 1px solid #f9e4b6;
+    border-bottom: 1px solid #f9e4b6;
+}
+QToolButton#tabButton {
+    border: none;
+    padding: 6px;
+    color: #c0a066;
+}
+QToolButton#tabButton:hover {
+    color: #fdfdfd;
+}
+QToolButton#tabButton:checked {
+    background: #fdf6e5;
+    border-radius: 12px;
+    color: #1c8fc8;
+}
+#peerSection {
+    background: #fffaf1;
+}
+#peerList {
+    background: transparent;
+    border: none;
+}
+#emptyIcon {
+    background: #ded6c5;
+    border-radius: 12px;
+    font-size: 20px;
+    color: #7c6d58;
+}
+#emptyText {
+    color: #9c8665;
+}
+#bottomToolbar {
+    background: #f0d796;
+    border-top: 1px solid #e4c680;
+}
+QToolButton#bottomButton {
+    border: none;
+    color: #a47d45;
+}

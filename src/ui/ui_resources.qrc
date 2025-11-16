@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/ui/qss">
+        <file alias="ChatPanel.qss">qss/ChatPanel.qss</file>
+        <file alias="ContactPanel.qss">qss/ContactPanel.qss</file>
+        <file alias="ProfileDialog.qss">qss/ProfileDialog.qss</file>
+        <file alias="SettingsDialog.qss">qss/SettingsDialog.qss</file>
+    </qresource>
+</RCC>

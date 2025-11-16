@@ -1,0 +1,128 @@
+#chatPanel {
+    background: #e8eaed;
+}
+#chatHeader {
+    background: #f5f6fa;
+    border-bottom: 1px solid #e2e6ef;
+}
+#chatName {
+    font-size: 20px;
+    font-weight: 600;
+    color: #30343f;
+}
+#chatPresence {
+    font-size: 12px;
+    color: #8a92a6;
+}
+#chatAction {
+    border: none;
+    padding: 6px;
+}
+#chatAction:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 16px;
+}
+#actionButton {
+    border: 1px solid #f4b552;
+    border-radius: 16px;
+    padding: 6px 18px;
+    background: #fff4d5;
+    color: #c87900;
+}
+#actionButton:hover {
+    background: #ffefd1;
+}
+#chatBody {
+    background: #e8eaed;
+}
+#messageViewport {
+    background: #e8eaed;
+}
+#chatEmpty {
+    color: #a3a9b8;
+    font-size: 14px;
+}
+#timelineLabel {
+    color: #8a92a6;
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 4px 14px;
+    border-radius: 16px;
+}
+#bubblePeer {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e3e7ef;
+    padding: 0px;
+}
+#bubbleSelf {
+    background: #bdf8a8;
+    border-radius: 12px;
+    border: 1px solid #9ed58b;
+    padding: 0px;
+}
+#bubbleText {
+    font-size: 14px;
+    color: #2f3542;
+}
+#bubbleSender {
+    font-size: 12px;
+    color: #8a92a6;
+}
+#avatarPeer, #avatarSelf {
+    min-width: 40px;
+    min-height: 40px;
+    border-radius: 20px;
+    border: none;
+    background: #fff;
+    font-weight: 600;
+    color: #65708c;
+}
+#avatarSelf {
+    background: #7ac85c;
+    color: #ffffff;
+}
+#chatInputArea {
+    background: #ffffff;
+    border-top: 1px solid #dfe3eb;
+}
+#chatTool {
+    color: #5f6577;
+    font-size: 13px;
+}
+#chatToolButton {
+    border: none;
+    padding: 0 8px;
+    color: #4f576a;
+}
+#chatToolButton:hover,
+#chatTool:hover {
+    color: #2c7dfa;
+}
+#chatInput {
+    border: 1px solid #dfe3eb;
+    border-radius: 12px;
+    background: #fbfbfc;
+    padding: 10px;
+    font-size: 14px;
+}
+#sendButton {
+    background: #1aad19;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 28px;
+    font-size: 14px;
+    font-weight: 600;
+}
+#sendButton:hover {
+    background: #17900f;
+}
+#chatStatusBar {
+    background: #f5f6fa;
+    border-top: 1px solid #e2e6ef;
+}
+#statusLabel {
+    color: #8a92a6;
+    font-size: 12px;
+}

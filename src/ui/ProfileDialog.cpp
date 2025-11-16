@@ -1,4 +1,5 @@
 #include "ProfileDialog.h"
+#include "StyleHelper.h"
 
 #include <QFormLayout>
 #include <QGridLayout>
@@ -21,70 +22,7 @@ ProfileDialog::ProfileDialog(ChatController *controller, QWidget *parent)
     resize(420, 640);
     setAttribute(Qt::WA_StyledBackground, true);
 
-    setStyleSheet(QStringLiteral(R"(
-        ProfileDialog {
-            background-color: #f8f3ea;
-        }
-        #profileHeader {
-            border-radius: 20px;
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                                        stop:0 #ffd06b, stop:1 #f28b42);
-        }
-        #profileAvatar {
-            background: rgba(255,255,255,0.95);
-            border-radius: 18px;
-            color: #3f51b5;
-            font-size: 48px;
-            font-weight: 600;
-            border: 2px solid transparent;
-        }
-        #profileAvatar:hover {
-            border-color: #3d91ff;
-            background-color: rgba(255,255,255,0.88);
-        }
-        #headerTitle {
-            font-size: 22px;
-            font-weight: 600;
-            color: #ffffff;
-        }
-        #headerSubtitle {
-            color: rgba(255,255,255,0.85);
-            font-size: 12px;
-        }
-        #primaryActionButton {
-            border-radius: 14px;
-            padding: 8px 26px;
-            color: #ffffff;
-            background-color: rgba(255,255,255,0.3);
-            border: 1px solid rgba(255,255,255,0.45);
-            font-weight: 600;
-        }
-        #primaryActionButton:hover {
-            background-color: rgba(255,255,255,0.5);
-        }
-        #profileCard {
-            background: #ffffff;
-            border-radius: 20px;
-        }
-        QLabel#profileFieldLabel {
-            color: #7a7a7a;
-            font-size: 14px;
-        }
-        QLineEdit, QComboBox {
-            border: 1px solid #e3ded8;
-            border-radius: 10px;
-            padding: 6px 12px;
-            background-color: #ffffff;
-        }
-        QLineEdit:disabled {
-            background: #f3f1ef;
-            color: #a0a0a0;
-        }
-        QComboBox::drop-down {
-            border: none;
-            width: 24px;
-        }
-    )"));
+    setStyleSheet(UiUtils::loadStyleSheet(QStringLiteral(":/ui/qss/ProfileDialog.qss")));
 
     auto *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(24, 24, 24, 24);

@@ -1,4 +1,5 @@
 #include "SettingsDialog.h"
+#include "StyleHelper.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -45,77 +46,7 @@ void SettingsDialog::setupUi() {
     connect(m_navGroup, &QButtonGroup::idClicked, this, &SettingsDialog::switchCategory);
     switchCategory(0);
 
-    setStyleSheet(R"(
-        SettingsDialog {
-            background: #fff8e7;
-        }
-        #navPanel {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                        stop:0 #f3cc60, stop:1 #f0a92d);
-            color: #ffffff;
-        }
-        #navTitle {
-            font-size: 18px;
-            font-weight: 600;
-            color: #ffffff;
-        }
-        QToolButton#navButton {
-            text-align: left;
-            padding: 10px 12px;
-            border: none;
-            border-radius: 10px;
-            color: rgba(255,255,255,0.9);
-            font-size: 15px;
-            font-weight: 500;
-        }
-        QToolButton#navButton:hover {
-            background: rgba(255, 255, 255, 0.18);
-        }
-        QToolButton#navButton:checked {
-            background: rgba(255, 255, 255, 0.28);
-            color: #ffffff;
-        }
-        #contentArea {
-            background: #fffdf6;
-        }
-        #section {
-            background: rgba(255, 255, 255, 0.7);
-            border: 1px solid #f4d9a8;
-            border-radius: 12px;
-            padding: 16px;
-        }
-        #sectionTitle {
-            font-size: 15px;
-            color: #b97a0f;
-            font-weight: 600;
-        }
-        #divider {
-            color: #e2cfa2;
-        }
-        QCheckBox, QRadioButton {
-            font-size: 14px;
-            color: #5e5130;
-        }
-        QPushButton#actionBtn {
-            border: 1px solid #d9d9d9;
-            border-radius: 8px;
-            background: #f6f6f6;
-            padding: 6px 18px;
-        }
-        QPushButton#actionBtn:hover {
-            background: #fff;
-        }
-        QLineEdit#shortcutEdit {
-            border: 1px solid #d9d9d9;
-            border-radius: 6px;
-            padding: 4px 8px;
-            background: #fffdf9;
-        }
-        #linkLabel {
-            color: #1f7bd8;
-            text-decoration: underline;
-        }
-    )");
+    setStyleSheet(UiUtils::loadStyleSheet(QStringLiteral(":/ui/qss/SettingsDialog.qss")));
 }
 
 QWidget *SettingsDialog::buildNavigation(QWidget *parent) {

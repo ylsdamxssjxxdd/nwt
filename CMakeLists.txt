@@ -20,6 +20,8 @@ set(SOURCES
     src/ui/SettingsDialog.cpp
     src/ui/ShareCenterDialog.cpp
     src/ui/ProfileDialog.cpp
+    src/ui/StyleHelper.cpp
+    src/ui/ui_resources.qrc
 )
 
 add_executable(nwt ${SOURCES})
