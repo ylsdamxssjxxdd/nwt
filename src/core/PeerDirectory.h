@@ -2,23 +2,19 @@
 
 #include "PeerInfo.h"
 
-#include <QAbstractListModel>
+#include <QObject>
+#include <QList>
 #include <QVector>
 
-class PeerDirectory : public QAbstractListModel {
+class PeerDirectory : public QObject {
     Q_OBJECT
 
 public:
-    enum Roles { IdRole = Qt::UserRole + 1, DisplayNameRole, AddressRole, StatusRole };
-    Q_ENUM(Roles)
-
     explicit PeerDirectory(QObject *parent = nullptr);
 
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    QHash<int, QByteArray> roleNames() const override;
-
     QList<PeerInfo> peers() const;
+    PeerInfo peerAt(int index) const;
+    int peerCount() const;
 
 public slots:
     void upsertPeer(const PeerInfo &info);
