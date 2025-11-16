@@ -225,11 +225,17 @@ QWidget *ContactsSidebar::createEmptyState(QWidget *parent) {
     auto *layout = new QVBoxLayout(placeholder);
     layout->setContentsMargins(0, 32, 0, 32);
     layout->setSpacing(12);
+    auto *iconLabel = new QLabel(tr("通"), placeholder);
+    iconLabel->setObjectName("emptyIcon");
+    iconLabel->setAlignment(Qt::AlignCenter);
+    iconLabel->setFixedSize(72, 72);
     auto *label = new QLabel(tr("当前没有在线联系人\n稍后再来刷新"), placeholder);
+    label->setObjectName("emptyText");
     label->setAlignment(Qt::AlignCenter);
     label->setWordWrap(true);
     layout->addStretch(1);
-    layout->addWidget(label);
+    layout->addWidget(iconLabel, 0, Qt::AlignHCenter);
+    layout->addWidget(label, 0, Qt::AlignHCenter);
     layout->addStretch(1);
     return placeholder;
 }
@@ -245,4 +251,3 @@ void ContactsSidebar::setActiveTab(int index) {
         }
     }
 }
-
