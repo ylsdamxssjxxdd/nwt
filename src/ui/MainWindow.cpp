@@ -172,8 +172,8 @@ QWidget *MainWindow::buildChatPanel(QWidget *parent) {
     auto *inputArea = new QFrame(panel);
     inputArea->setObjectName("chatInputArea");
     auto *inputLayout = new QVBoxLayout(inputArea);
-    inputLayout->setContentsMargins(32, 16, 32, 16);
-    inputLayout->setSpacing(12);
+    inputLayout->setContentsMargins(24, 12, 24, 10);
+    inputLayout->setSpacing(8);
 
     auto *toolRow = new QHBoxLayout();
     toolRow->setContentsMargins(0, 0, 0, 0);

@@ -1,5 +1,5 @@
 #chatPanel {
-    background: #e8eaed;
+    background: #f3f4ef;
 }
 #chatHeader {
     background: #f5f6fa;
@@ -33,10 +33,10 @@
     background: #ffefd1;
 }
 #chatBody {
-    background: #e8eaed;
+    background: #f3f4ef;
 }
 #messageViewport {
-    background: #e8eaed;
+    background: #f3f4ef;
 }
 #chatEmpty {
     color: #a3a9b8;
