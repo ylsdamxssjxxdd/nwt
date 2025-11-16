@@ -496,13 +496,20 @@ void ChatController::updateSignatureText(const QString &signature) {
 }
 
 void ChatController::updateProfileDetails(const ProfileDetails &details) {
-    m_settings.profile = details;
-    if (!details.name.isEmpty()) {
-        m_displayName = details.name;
+    ProfileDetails updated = details;
+    if (updated.unit.isEmpty()) {
+        updated.unit = QStringLiteral("生物研究院");
     }
-    m_settings.signatureText = details.signature;
+    if (updated.department.isEmpty()) {
+        updated.department = QStringLiteral("神经网络研究室");
+    }
+    m_settings.profile = updated;
+    if (!updated.name.isEmpty()) {
+        m_displayName = updated.name;
+    }
+    m_settings.signatureText = updated.signature;
     persistSettings();
-    emit profileUpdated(details);
+    emit profileUpdated(updated);
     emit preferencesChanged(m_settings);
 }
 
@@ -590,6 +597,12 @@ void ChatController::loadSettings() {
     }
     if (m_settings.profile.ip.isEmpty()) {
         m_settings.profile.ip = QStringLiteral("192.168.0.2");
+    }
+    if (m_settings.profile.unit.isEmpty()) {
+        m_settings.profile.unit = QStringLiteral("生物研究院");
+    }
+    if (m_settings.profile.department.isEmpty()) {
+        m_settings.profile.department = QStringLiteral("神经网络研究室");
     }
     m_displayName = m_settings.profile.name;
     m_shareManager.collectLocalShares(m_settings.sharedDirectories);
@@ -771,8 +784,8 @@ ProfileDetails ChatController::parseProfileObject(const QJsonObject &object) con
     details.name = object.value(QStringLiteral("name")).toString(m_displayName);
     details.signature = object.value(QStringLiteral("signature")).toString(m_settings.signatureText);
     details.gender = object.value(QStringLiteral("gender")).toString(QStringLiteral("男"));
-    details.unit = object.value(QStringLiteral("unit")).toString();
-    details.department = object.value(QStringLiteral("department")).toString();
+    details.unit = object.value(QStringLiteral("unit")).toString(QStringLiteral("生物研究院"));
+    details.department = object.value(QStringLiteral("department")).toString(QStringLiteral("神经网络研究室"));
     details.phone = object.value(QStringLiteral("phone")).toString();
     details.mobile = object.value(QStringLiteral("mobile")).toString();
     details.email = object.value(QStringLiteral("email")).toString();

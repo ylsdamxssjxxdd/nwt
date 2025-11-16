@@ -4,7 +4,6 @@
 
 #include <QComboBox>
 #include <QDialog>
-#include <QEvent>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPointer>
@@ -22,7 +21,6 @@ public:
 
 protected:
     void showEvent(QShowEvent *event) override;
-    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
     void handlePrimaryAction();
@@ -31,6 +29,7 @@ private:
     void updateEditState(bool editing);
     void saveProfile();
     void applyProfileToFields(const ProfileDetails &profile);
+    QString resolveAvatarLetter(const ProfileDetails &profile) const;
 
     QPointer<ChatController> m_controller;
     QLabel *m_avatarLabel = nullptr;

@@ -30,8 +30,8 @@ struct ProfileDetails {
     QString name;
     QString signature;
     QString gender;
-    QString unit;
-    QString department;
+    QString unit = QStringLiteral(u"生物研究院");
+    QString department = QStringLiteral(u"神经网络研究室");
     QString phone;
     QString mobile;
     QString email;

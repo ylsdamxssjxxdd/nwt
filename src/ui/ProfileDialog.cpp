@@ -5,7 +5,6 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QMouseEvent>
 #include <QVBoxLayout>
 
 namespace {
@@ -41,9 +40,6 @@ ProfileDialog::ProfileDialog(ChatController *controller, QWidget *parent)
     m_avatarLabel->setObjectName("profileAvatar");
     m_avatarLabel->setAlignment(Qt::AlignCenter);
     m_avatarLabel->setFixedSize(96, 96);
-    m_avatarLabel->setCursor(Qt::PointingHandCursor);
-    m_avatarLabel->setAttribute(Qt::WA_Hover);
-    m_avatarLabel->installEventFilter(this);
     headerLayout->addWidget(m_avatarLabel, 0, 0, 2, 1, Qt::AlignLeft | Qt::AlignVCenter);
 
     auto *titleLabel = new QLabel(tr("个人信息"), headerWidget);
@@ -207,9 +203,7 @@ void ProfileDialog::applyProfileToFields(const ProfileDetails &profile) {
         m_ipEdit->setText(profile.ip);
     }
     if (m_avatarLabel) {
-        QString letter = profile.name.trimmed();
-        letter = letter.isEmpty() ? QStringLiteral("E") : letter.left(1).toUpper();
-        m_avatarLabel->setText(letter);
+        m_avatarLabel->setText(resolveAvatarLetter(profile));
     }
 }
 
@@ -221,15 +215,14 @@ void ProfileDialog::showEvent(QShowEvent *event) {
     updateEditState(false);
 }
 
-bool ProfileDialog::eventFilter(QObject *watched, QEvent *event) {
-    if (watched == m_avatarLabel) {
-        if (event->type() == QEvent::MouseButtonRelease) {
-            const auto *mouseEvent = static_cast<QMouseEvent *>(event);
-            if (mouseEvent->button() == Qt::LeftButton && !m_isEditing) {
-                handlePrimaryAction();
-                return true;
-            }
-        }
+QString ProfileDialog::resolveAvatarLetter(const ProfileDetails &profile) const {
+    QString baseName = profile.name.trimmed();
+    if (baseName.isEmpty() && m_controller) {
+        baseName = m_controller->localDisplayName().trimmed();
     }
-    return QDialog::eventFilter(watched, event);
+    if (baseName.isEmpty()) {
+        baseName = QStringLiteral("E");
+    }
+    const QString letter = baseName.left(1).toUpper();
+    return letter.isEmpty() ? QStringLiteral("E") : letter;
 }
