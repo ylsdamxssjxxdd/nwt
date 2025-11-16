@@ -12,6 +12,7 @@ namespace {
 QLabel *createFieldLabel(const QString &text, QWidget *parent) {
     auto *label = new QLabel(text, parent);
     label->setObjectName(QStringLiteral("profileFieldLabel"));
+    label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     return label;
 }
 } // namespace
@@ -53,7 +54,7 @@ ProfileDialog::ProfileDialog(ChatController *controller, QWidget *parent)
     subtitleLabel->setObjectName("headerSubtitle");
     headerLayout->addWidget(subtitleLabel, 1, 1, 1, 1, Qt::AlignLeft | Qt::AlignTop);
 
-    m_primaryButton = new QPushButton(tr("编辑资料"), headerWidget);
+    m_primaryButton = new QPushButton(tr("编辑"), headerWidget);
     m_primaryButton->setObjectName("primaryActionButton");
     m_primaryButton->setCursor(Qt::PointingHandCursor);
     headerLayout->addWidget(m_primaryButton, 0, 2, 2, 1, Qt::AlignTop | Qt::AlignRight);
@@ -146,7 +147,7 @@ void ProfileDialog::updateEditState(bool editing) {
         m_genderCombo->setEnabled(editing);
     }
     if (m_primaryButton) {
-        m_primaryButton->setText(editing ? tr("保存") : tr("编辑资料"));
+        m_primaryButton->setText(editing ? tr("保存") : tr("编辑"));
     }
 }
 
