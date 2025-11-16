@@ -82,11 +82,13 @@ QToolButton#tabButton:checked {
 #emptyText {
     color: #9c8665;
 }
-#bottomToolbar {
-    background: #f0d796;
-    border-top: 1px solid #e4c680;
-}
-QToolButton#bottomButton {
+QToolButton#profileAction {
     border: none;
     color: #a47d45;
+    padding: 4px;
+    border-radius: 10px;
+}
+QToolButton#profileAction:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #6a4d24;
 }

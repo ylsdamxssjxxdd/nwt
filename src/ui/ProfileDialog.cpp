@@ -67,7 +67,7 @@ ProfileDialog::ProfileDialog(ChatController *controller, QWidget *parent)
 
     auto *formPanel = new QWidget(cardWidget);
     auto *formLayout = new QFormLayout(formPanel);
-    formLayout->setLabelAlignment(Qt::AlignRight);
+    formLayout->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
     formLayout->setFormAlignment(Qt::AlignTop);
     formLayout->setHorizontalSpacing(24);
     formLayout->setVerticalSpacing(12);

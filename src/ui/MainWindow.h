@@ -84,7 +84,6 @@ private:
     /*! \brief 构建联系人列表与占位内容。 */
     QWidget *buildPeerSection(QWidget *parent);
     /*! \brief 构建底部快捷工具栏。 */
-    QWidget *buildBottomToolbar(QWidget *parent);
     /*! \brief 生成“暂无联系人”的占位组件。 */
     QWidget *createEmptyState(QWidget *parent);
     /*! \brief 应用联系人面板的统一配色与样式。 */

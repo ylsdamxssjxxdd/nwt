@@ -104,7 +104,6 @@ QWidget *MainWindow::buildLeftPanel(QWidget *parent) {
     layout->addWidget(buildSearchRow(panel));
     layout->addWidget(buildTabBar(panel));
     layout->addWidget(buildPeerSection(panel), 1);
-    layout->addWidget(buildBottomToolbar(panel));
 
     applyContactPanelStyle(panel);
     return panel;
@@ -136,17 +135,6 @@ QWidget *MainWindow::buildChatPanel(QWidget *parent) {
     headerInfo->addWidget(m_chatPresenceLabel);
     headerLayout->addLayout(headerInfo);
     headerLayout->addStretch();
-
-    auto buildHeaderAction = [header](QStyle::StandardPixmap icon, const QString &tooltip) {
-        auto *button = new QToolButton(header);
-        button->setObjectName("chatAction");
-        button->setIcon(header->style()->standardIcon(icon));
-        button->setToolTip(tooltip);
-        button->setAutoRaise(true);
-        return button;
-    };
-    headerLayout->addWidget(buildHeaderAction(QStyle::SP_ToolBarHorizontalExtensionButton, tr("语音通话")));
-    headerLayout->addWidget(buildHeaderAction(QStyle::SP_DialogYesButton, tr("视频通话")));
 
     m_addSubnetButton = new QPushButton(tr("添加子网"), header);
     m_addSubnetButton->setObjectName("actionButton");
@@ -260,6 +248,7 @@ QWidget *MainWindow::buildChatPanel(QWidget *parent) {
     m_avatarLabel->setFocusPolicy(Qt::NoFocus);
     m_avatarLabel->setCursor(Qt::PointingHandCursor);
     layout->addWidget(m_avatarLabel);
+    layout->setAlignment(m_avatarLabel, Qt::AlignTop);
 
     auto *infoLayout = new QVBoxLayout();
     infoLayout->setContentsMargins(0, 0, 0, 0);
@@ -296,9 +285,30 @@ QWidget *MainWindow::buildChatPanel(QWidget *parent) {
 
     layout->addLayout(infoLayout, 1);
 
+    auto createProfileAction = [frame](QStyle::StandardPixmap icon, const QString &tooltip) {
+        auto *button = new QToolButton(frame);
+        button->setObjectName("profileAction");
+        button->setIcon(frame->style()->standardIcon(icon));
+        button->setToolTip(tooltip);
+        button->setAutoRaise(true);
+        return button;
+    };
+    auto *actionLayout = new QVBoxLayout();
+    actionLayout->setContentsMargins(0, 0, 0, 0);
+    actionLayout->setSpacing(8);
+    auto *refreshButton = createProfileAction(QStyle::SP_BrowserReload, tr("刷新状态"));
+    auto *settingsButton = createProfileAction(QStyle::SP_FileDialogDetailedView, tr("设置中心"));
+    actionLayout->addWidget(refreshButton, 0, Qt::AlignRight);
+    actionLayout->addWidget(settingsButton, 0, Qt::AlignRight);
+    actionLayout->addStretch(1);
+    layout->addLayout(actionLayout);
+
     connect(statusButton, &QToolButton::clicked, this,
             [this]() { showStatus(tr("当前为在线状态，可在此切换。")); });
     connect(m_avatarLabel, &QPushButton::clicked, this, &MainWindow::openProfileDialog);
+    connect(refreshButton, &QToolButton::clicked, this,
+            [this]() { showStatus(tr("正在刷新状态...")); });
+    connect(settingsButton, &QToolButton::clicked, this, &MainWindow::openSettingsDialog);
 
     return frame;
 }
@@ -388,42 +398,6 @@ QWidget *MainWindow::buildPeerSection(QWidget *parent) {
     return frame;
 }
 
-QWidget *MainWindow::buildBottomToolbar(QWidget *parent) {
-    auto *frame = new QFrame(parent);
-    frame->setObjectName("bottomToolbar");
-    frame->setFixedHeight(56);
-
-    auto *layout = new QHBoxLayout(frame);
-    layout->setContentsMargins(16, 0, 16, 0);
-    layout->setSpacing(16);
-
-    const QVector<QPair<QStyle::StandardPixmap, QString>> buttons = {
-        {QStyle::SP_BrowserReload, tr("刷新状态")},
-        {QStyle::SP_FileDialogDetailedView, tr("设置中心")}
-    };
-    const int settingsIndex = buttons.size() - 1;
-
-    for (int i = 0; i < buttons.size(); ++i) {
-        auto *tool = new QToolButton(frame);
-        tool->setObjectName("bottomButton");
-        tool->setIcon(style()->standardIcon(buttons[i].first));
-        tool->setToolTip(buttons[i].second);
-        tool->setToolButtonStyle(Qt::ToolButtonIconOnly);
-        layout->addWidget(tool);
-
-        connect(tool, &QToolButton::clicked, this, [this, i, settingsIndex]() {
-            if (i == settingsIndex) {
-                openSettingsDialog();
-                return;
-            }
-
-            showStatus(tr("功能正在迭代更新。"));
-        });
-    }
-
-    layout->addStretch();
-    return frame;
-}
 
 QWidget *MainWindow::createEmptyState(QWidget *parent) {
     auto *holder = new QWidget(parent);
