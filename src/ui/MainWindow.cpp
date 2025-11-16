@@ -386,6 +386,7 @@ QWidget *MainWindow::buildChatPanel(QWidget *parent) {
     m_avatarLabel->setFixedSize(88, 88);
     m_avatarLabel->setFlat(true);
     m_avatarLabel->setFocusPolicy(Qt::NoFocus);
+    m_avatarLabel->setCursor(Qt::PointingHandCursor);
     layout->addWidget(m_avatarLabel);
 
     auto *infoLayout = new QVBoxLayout();
@@ -597,6 +598,14 @@ void MainWindow::applyContactPanelStyle(QWidget *panel) {
             border-radius: 10px;
             font-size: 26px;
             font-weight: 600;
+            border: 2px solid transparent;
+        }
+        #avatarLabel:hover {
+            background: #5aa3ff;
+            border-color: rgba(255, 255, 255, 0.55);
+        }
+        #avatarLabel:pressed {
+            background: #3372c8;
         }
         #profileName {
             font-size: 18px;

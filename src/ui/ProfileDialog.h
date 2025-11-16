@@ -2,17 +2,17 @@
 
 #include "core/ChatController.h"
 
+#include <QComboBox>
 #include <QDialog>
+#include <QEvent>
+#include <QLabel>
 #include <QLineEdit>
 #include <QPointer>
-#include <QComboBox>
-#include <QStackedWidget>
-#include <QDialogButtonBox>
-#include <QLabel>
+#include <QPushButton>
 #include <QVector>
 
-/*!
- * \brief 个人资料对话框，支持查看与编辑当前用户信息。
+/*! 
+ * \brief 个人资料对话框，单面板展示或编辑当前用户资料。
  */
 class ProfileDialog : public QDialog {
     Q_OBJECT
@@ -22,22 +22,20 @@ public:
 
 protected:
     void showEvent(QShowEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
-    void enterEditMode();
-    void saveProfile();
+    void handlePrimaryAction();
 
 private:
-    void buildViewMode();
-    void buildEditMode();
+    void updateEditState(bool editing);
+    void saveProfile();
     void applyProfileToFields(const ProfileDetails &profile);
 
     QPointer<ChatController> m_controller;
-    QStackedWidget *m_stack = nullptr;
-    QDialogButtonBox *m_buttonBox = nullptr;
-    QWidget *m_viewPanel = nullptr;
-    QWidget *m_editPanel = nullptr;
-    QVector<QLabel *> m_viewLabels;
+    QLabel *m_avatarLabel = nullptr;
+    QPushButton *m_primaryButton = nullptr;
+    QVector<QLineEdit *> m_editableFields;
     QLineEdit *m_nameEdit = nullptr;
     QLineEdit *m_signatureEdit = nullptr;
     QComboBox *m_genderCombo = nullptr;
@@ -48,4 +46,5 @@ private:
     QLineEdit *m_emailEdit = nullptr;
     QLineEdit *m_versionEdit = nullptr;
     QLineEdit *m_ipEdit = nullptr;
+    bool m_isEditing = false;
 };

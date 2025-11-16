@@ -1,116 +1,223 @@
 #include "ProfileDialog.h"
 
-#include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QPushButton>
-#include <QStackedWidget>
+#include <QMouseEvent>
 #include <QVBoxLayout>
 
 namespace {
-QString emptyPlaceholder(const QString &text) {
-    return text.isEmpty() ? QObject::tr("未填写") : text;
+QLabel *createFieldLabel(const QString &text, QWidget *parent) {
+    auto *label = new QLabel(text, parent);
+    label->setObjectName(QStringLiteral("profileFieldLabel"));
+    return label;
 }
 } // namespace
 
 ProfileDialog::ProfileDialog(ChatController *controller, QWidget *parent)
     : QDialog(parent), m_controller(controller) {
     setWindowTitle(tr("个人信息"));
-    resize(380, 520);
+    resize(420, 640);
+    setAttribute(Qt::WA_StyledBackground, true);
+
+    setStyleSheet(QStringLiteral(R"(
+        ProfileDialog {
+            background-color: #f8f3ea;
+        }
+        #profileHeader {
+            border-radius: 20px;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                                        stop:0 #ffd06b, stop:1 #f28b42);
+        }
+        #profileAvatar {
+            background: rgba(255,255,255,0.95);
+            border-radius: 18px;
+            color: #3f51b5;
+            font-size: 48px;
+            font-weight: 600;
+            border: 2px solid transparent;
+        }
+        #profileAvatar:hover {
+            border-color: #3d91ff;
+            background-color: rgba(255,255,255,0.88);
+        }
+        #headerTitle {
+            font-size: 22px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+        #headerSubtitle {
+            color: rgba(255,255,255,0.85);
+            font-size: 12px;
+        }
+        #primaryActionButton {
+            border-radius: 14px;
+            padding: 8px 26px;
+            color: #ffffff;
+            background-color: rgba(255,255,255,0.3);
+            border: 1px solid rgba(255,255,255,0.45);
+            font-weight: 600;
+        }
+        #primaryActionButton:hover {
+            background-color: rgba(255,255,255,0.5);
+        }
+        #profileCard {
+            background: #ffffff;
+            border-radius: 20px;
+        }
+        QLabel#profileFieldLabel {
+            color: #7a7a7a;
+            font-size: 14px;
+        }
+        QLineEdit, QComboBox {
+            border: 1px solid #e3ded8;
+            border-radius: 10px;
+            padding: 6px 12px;
+            background-color: #ffffff;
+        }
+        QLineEdit:disabled {
+            background: #f3f1ef;
+            color: #a0a0a0;
+        }
+        QComboBox::drop-down {
+            border: none;
+            width: 24px;
+        }
+    )"));
 
     auto *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(24, 24, 24, 24);
-    mainLayout->setSpacing(16);
+    mainLayout->setSpacing(18);
 
-    auto *avatar = new QLabel(this);
-    avatar->setObjectName("profileAvatar");
-    avatar->setAlignment(Qt::AlignCenter);
-    avatar->setFixedSize(96, 96);
-    avatar->setText(controller ? controller->profileDetails().name.left(1).toUpper() : tr("E"));
-    mainLayout->addWidget(avatar, 0, Qt::AlignHCenter);
+    auto *headerWidget = new QWidget(this);
+    headerWidget->setObjectName("profileHeader");
+    headerWidget->setFixedHeight(180);
+    auto *headerLayout = new QGridLayout(headerWidget);
+    headerLayout->setContentsMargins(24, 24, 24, 24);
+    headerLayout->setHorizontalSpacing(16);
+    headerLayout->setVerticalSpacing(8);
 
-    m_stack = new QStackedWidget(this);
-    mainLayout->addWidget(m_stack, 1);
+    m_avatarLabel = new QLabel(headerWidget);
+    m_avatarLabel->setObjectName("profileAvatar");
+    m_avatarLabel->setAlignment(Qt::AlignCenter);
+    m_avatarLabel->setFixedSize(96, 96);
+    m_avatarLabel->setCursor(Qt::PointingHandCursor);
+    m_avatarLabel->setAttribute(Qt::WA_Hover);
+    m_avatarLabel->installEventFilter(this);
+    headerLayout->addWidget(m_avatarLabel, 0, 0, 2, 1, Qt::AlignLeft | Qt::AlignVCenter);
 
-    m_viewPanel = new QWidget(this);
-    auto *viewLayout = new QFormLayout(m_viewPanel);
-    viewLayout->setLabelAlignment(Qt::AlignRight);
-    viewLayout->setFormAlignment(Qt::AlignTop);
+    auto *titleLabel = new QLabel(tr("个人信息"), headerWidget);
+    titleLabel->setObjectName("headerTitle");
+    headerLayout->addWidget(titleLabel, 0, 1, 1, 1, Qt::AlignLeft | Qt::AlignBottom);
 
-    const QStringList labels = {tr("姓名："), tr("签名："), tr("性别："), tr("单位："), tr("部门："), tr("电话："),
-                                tr("手机："), tr("邮箱："), tr("版本："), tr("IP：")};
-    for (const QString &label : labels) {
-        auto *value = new QLabel(m_viewPanel);
-        value->setObjectName(QStringLiteral("view_%1").arg(labels.indexOf(label)));
-        viewLayout->addRow(label, value);
-        m_viewLabels.append(value);
-    }
+    auto *subtitleLabel = new QLabel(tr("完善资料，便于同事快速了解你"), headerWidget);
+    subtitleLabel->setObjectName("headerSubtitle");
+    headerLayout->addWidget(subtitleLabel, 1, 1, 1, 1, Qt::AlignLeft | Qt::AlignTop);
 
-    auto *editButton = new QPushButton(tr("编辑资料"), this);
-    mainLayout->addWidget(editButton, 0, Qt::AlignRight);
+    m_primaryButton = new QPushButton(tr("编辑资料"), headerWidget);
+    m_primaryButton->setObjectName("primaryActionButton");
+    m_primaryButton->setCursor(Qt::PointingHandCursor);
+    headerLayout->addWidget(m_primaryButton, 0, 2, 2, 1, Qt::AlignTop | Qt::AlignRight);
+    mainLayout->addWidget(headerWidget);
 
-    m_editPanel = new QWidget(this);
-    auto *editLayout = new QFormLayout(m_editPanel);
-    editLayout->setLabelAlignment(Qt::AlignRight);
+    auto *cardWidget = new QWidget(this);
+    cardWidget->setObjectName("profileCard");
+    auto *cardLayout = new QVBoxLayout(cardWidget);
+    cardLayout->setContentsMargins(20, 20, 20, 20);
+    cardLayout->setSpacing(12);
 
-    m_nameEdit = new QLineEdit(m_editPanel);
-    m_signatureEdit = new QLineEdit(m_editPanel);
-    m_genderCombo = new QComboBox(m_editPanel);
+    auto *formPanel = new QWidget(cardWidget);
+    auto *formLayout = new QFormLayout(formPanel);
+    formLayout->setLabelAlignment(Qt::AlignRight);
+    formLayout->setFormAlignment(Qt::AlignTop);
+    formLayout->setHorizontalSpacing(24);
+    formLayout->setVerticalSpacing(12);
+
+    auto createLineEdit = [&](const QString &placeholder, bool editable) {
+        auto *edit = new QLineEdit(formPanel);
+        edit->setPlaceholderText(placeholder);
+        if (editable) {
+            edit->setReadOnly(true);
+            m_editableFields.append(edit);
+        } else {
+            edit->setReadOnly(true);
+        }
+        return edit;
+    };
+
+    m_nameEdit = createLineEdit(tr("请输入姓名"), true);
+    m_signatureEdit = createLineEdit(tr("设置个性签名"), true);
+    m_genderCombo = new QComboBox(formPanel);
     m_genderCombo->addItems({tr("男"), tr("女")});
-    m_unitEdit = new QLineEdit(m_editPanel);
-    m_departmentEdit = new QLineEdit(m_editPanel);
-    m_phoneEdit = new QLineEdit(m_editPanel);
-    m_mobileEdit = new QLineEdit(m_editPanel);
-    m_emailEdit = new QLineEdit(m_editPanel);
-    m_versionEdit = new QLineEdit(m_editPanel);
-    m_ipEdit = new QLineEdit(m_editPanel);
-    m_versionEdit->setReadOnly(true);
-    m_ipEdit->setReadOnly(true);
+    m_genderCombo->setEnabled(false);
+    m_genderCombo->setCursor(Qt::PointingHandCursor);
+    m_unitEdit = createLineEdit(tr("请输入所在单位"), true);
+    m_departmentEdit = createLineEdit(tr("请输入所属部门"), true);
+    m_phoneEdit = createLineEdit(tr("填写座机或直线"), true);
+    m_mobileEdit = createLineEdit(tr("填写常用手机号"), true);
+    m_emailEdit = createLineEdit(tr("填写联系邮箱"), true);
+    m_versionEdit = createLineEdit(tr("由系统自动填写"), false);
+    m_ipEdit = createLineEdit(tr("由系统自动填写"), false);
 
-    editLayout->addRow(tr("姓名："), m_nameEdit);
-    editLayout->addRow(tr("签名："), m_signatureEdit);
-    editLayout->addRow(tr("性别："), m_genderCombo);
-    editLayout->addRow(tr("单位："), m_unitEdit);
-    editLayout->addRow(tr("部门："), m_departmentEdit);
-    editLayout->addRow(tr("电话："), m_phoneEdit);
-    editLayout->addRow(tr("手机："), m_mobileEdit);
-    editLayout->addRow(tr("邮箱："), m_emailEdit);
-    editLayout->addRow(tr("版本："), m_versionEdit);
-    editLayout->addRow(tr("IP："), m_ipEdit);
+    auto addEditRow = [&](const QString &labelText, QWidget *editor) {
+        formLayout->addRow(createFieldLabel(labelText, formPanel), editor);
+    };
 
-    m_stack->addWidget(m_viewPanel);
-    m_stack->addWidget(m_editPanel);
+    addEditRow(tr("姓名："), m_nameEdit);
+    addEditRow(tr("签名："), m_signatureEdit);
+    addEditRow(tr("性别："), m_genderCombo);
+    addEditRow(tr("单位："), m_unitEdit);
+    addEditRow(tr("部门："), m_departmentEdit);
+    addEditRow(tr("电话："), m_phoneEdit);
+    addEditRow(tr("手机："), m_mobileEdit);
+    addEditRow(tr("邮箱："), m_emailEdit);
+    addEditRow(tr("版本："), m_versionEdit);
+    addEditRow(tr("IP："), m_ipEdit);
 
-    m_buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Close, this);
-    mainLayout->addWidget(m_buttonBox);
-    m_buttonBox->button(QDialogButtonBox::Save)->setText(tr("保存"));
-    m_buttonBox->button(QDialogButtonBox::Close)->setText(tr("关闭"));
+    cardLayout->addWidget(formPanel);
+    mainLayout->addWidget(cardWidget, 1);
 
-    connect(m_buttonBox->button(QDialogButtonBox::Close), &QPushButton::clicked, this, &QDialog::reject);
-    connect(m_buttonBox->button(QDialogButtonBox::Save), &QPushButton::clicked, this, &ProfileDialog::saveProfile);
-    connect(editButton, &QPushButton::clicked, this, &ProfileDialog::enterEditMode);
-
-    if (m_stack->currentIndex() == 0) {
-        m_buttonBox->button(QDialogButtonBox::Save)->setEnabled(false);
-    }
+    connect(m_primaryButton, &QPushButton::clicked, this, &ProfileDialog::handlePrimaryAction);
 
     auto profile = controller ? controller->profileDetails() : ProfileDetails{};
     applyProfileToFields(profile);
+    updateEditState(false);
 }
 
-void ProfileDialog::enterEditMode() {
-    if (!m_stack || !m_buttonBox) {
-        return;
+void ProfileDialog::handlePrimaryAction() {
+    if (m_isEditing) {
+        saveProfile();
+    } else {
+        updateEditState(true);
+        if (m_nameEdit) {
+            m_nameEdit->setFocus();
+            m_nameEdit->selectAll();
+        }
     }
-    m_stack->setCurrentIndex(1);
-    m_buttonBox->button(QDialogButtonBox::Save)->setEnabled(true);
+}
+
+void ProfileDialog::updateEditState(bool editing) {
+    m_isEditing = editing;
+    for (auto *edit : std::as_const(m_editableFields)) {
+        if (edit) {
+            edit->setReadOnly(!editing);
+        }
+    }
+    if (m_genderCombo) {
+        m_genderCombo->setEnabled(editing);
+    }
+    if (m_primaryButton) {
+        m_primaryButton->setText(editing ? tr("保存") : tr("编辑资料"));
+    }
 }
 
 void ProfileDialog::saveProfile() {
     if (!m_controller) {
+        updateEditState(false);
         return;
     }
+
     ProfileDetails details = m_controller->profileDetails();
     details.name = m_nameEdit->text().trimmed();
     details.signature = m_signatureEdit->text().trimmed();
@@ -125,30 +232,10 @@ void ProfileDialog::saveProfile() {
 
     m_controller->updateProfileDetails(details);
     applyProfileToFields(details);
-
-    if (m_stack && m_buttonBox) {
-        m_stack->setCurrentIndex(0);
-        m_buttonBox->button(QDialogButtonBox::Save)->setEnabled(false);
-    }
+    updateEditState(false);
 }
 
 void ProfileDialog::applyProfileToFields(const ProfileDetails &profile) {
-    auto setValue = [&](int index, const QString &value) {
-        if (index >= 0 && index < m_viewLabels.size() && m_viewLabels[index]) {
-            m_viewLabels[index]->setText(emptyPlaceholder(value));
-        }
-    };
-    setValue(0, profile.name);
-    setValue(1, profile.signature);
-    setValue(2, profile.gender);
-    setValue(3, profile.unit);
-    setValue(4, profile.department);
-    setValue(5, profile.phone);
-    setValue(6, profile.mobile);
-    setValue(7, profile.email);
-    setValue(8, profile.version);
-    setValue(9, profile.ip);
-
     if (m_nameEdit) {
         m_nameEdit->setText(profile.name);
     }
@@ -180,6 +267,11 @@ void ProfileDialog::applyProfileToFields(const ProfileDetails &profile) {
     if (m_ipEdit) {
         m_ipEdit->setText(profile.ip);
     }
+    if (m_avatarLabel) {
+        QString letter = profile.name.trimmed();
+        letter = letter.isEmpty() ? QStringLiteral("E") : letter.left(1).toUpper();
+        m_avatarLabel->setText(letter);
+    }
 }
 
 void ProfileDialog::showEvent(QShowEvent *event) {
@@ -187,8 +279,18 @@ void ProfileDialog::showEvent(QShowEvent *event) {
     if (m_controller) {
         applyProfileToFields(m_controller->profileDetails());
     }
-    if (m_stack && m_buttonBox) {
-        m_stack->setCurrentIndex(0);
-        m_buttonBox->button(QDialogButtonBox::Save)->setEnabled(false);
+    updateEditState(false);
+}
+
+bool ProfileDialog::eventFilter(QObject *watched, QEvent *event) {
+    if (watched == m_avatarLabel) {
+        if (event->type() == QEvent::MouseButtonRelease) {
+            const auto *mouseEvent = static_cast<QMouseEvent *>(event);
+            if (mouseEvent->button() == Qt::LeftButton && !m_isEditing) {
+                handlePrimaryAction();
+                return true;
+            }
+        }
     }
+    return QDialog::eventFilter(watched, event);
 }
