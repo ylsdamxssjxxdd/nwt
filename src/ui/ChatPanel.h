@@ -2,11 +2,13 @@
 
 #include <QFrame>
 
+class EmotionPicker;
 class QLabel;
 class QScrollArea;
 class QVBoxLayout;
 class QTextEdit;
 class QPushButton;
+class QToolButton;
 
 /*!
  * \brief ChatPanel 管理聊天内容区与输入区。
@@ -39,6 +41,8 @@ private:
     void appendChatBubble(const QString &timestamp, const QString &sender, const QString &text, bool outgoing);
     void ensureChatAreaForNewEntry();
     void scrollToLatestMessage() const;
+    void toggleEmotionPopup();
+    void insertEmotionText(const QString &tips, const QString &imageResource);
 
     QLabel *m_chatNameLabel = nullptr;
     QLabel *m_chatPresenceLabel = nullptr;
@@ -48,7 +52,9 @@ private:
     QVBoxLayout *m_messageLayout = nullptr;
     QTextEdit *m_inputEdit = nullptr;
     QPushButton *m_sendButton = nullptr;
-    QPushButton *m_fileButton = nullptr;
-    QPushButton *m_shareButton = nullptr;
+    QToolButton *m_fileButton = nullptr;
+    QToolButton *m_shareButton = nullptr;
     QLabel *m_statusLabel = nullptr;
+    QToolButton *m_emotionButton = nullptr;
+    EmotionPicker *m_emotionPicker = nullptr;
 };

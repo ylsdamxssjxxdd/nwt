@@ -88,16 +88,15 @@
 }
 #chatTool {
     color: #5f6577;
-    font-size: 13px;
-}
-#chatToolButton {
     border: none;
-    padding: 0 8px;
-    color: #4f576a;
+    padding: 4px;
+    border-radius: 6px;
 }
-#chatToolButton:hover,
 #chatTool:hover {
-    color: #2c7dfa;
+    background: rgba(44, 125, 250, 0.12);
+}
+#chatTool:pressed {
+    background: rgba(44, 125, 250, 0.2);
 }
 #chatInput {
     border: 1px solid #dfe3eb;
@@ -125,4 +124,20 @@
 #statusLabel {
     color: #8a92a6;
     font-size: 12px;
+}
+#emotionPopup {
+    background: #ffffff;
+    border: 1px solid #dfe3eb;
+    border-radius: 12px;
+}
+#emotionPopup QScrollArea {
+    background: transparent;
+}
+#emotionPopup QToolButton {
+    border: none;
+    padding: 4px;
+    border-radius: 6px;
+}
+#emotionPopup QToolButton:hover {
+    background: rgba(44, 125, 250, 0.15);
 }

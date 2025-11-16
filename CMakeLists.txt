@@ -24,6 +24,7 @@ set(SOURCES
     src/ui/StyleHelper.cpp
     src/ui/PeerListModel.cpp
     src/ui/ContactsSidebar.cpp
+    src/ui/EmotionPicker.cpp
     src/ui/ChatPanel.cpp
     src/ui/ui_resources.qrc
 )

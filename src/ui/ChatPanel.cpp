@@ -1,17 +1,30 @@
 #include "ChatPanel.h"
 
+#include "EmotionPicker.h"
 #include "StyleHelper.h"
 
 #include <QDateTime>
 #include <QEvent>
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QIcon>
+#include <QImage>
 #include <QLabel>
 #include <QKeyEvent>
+#include <QPoint>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QSize>
+#include <QStyle>
+#include <QTextCursor>
+#include <QTextDocument>
 #include <QTextEdit>
+#include <QTextImageFormat>
+#include <QTextBlock>
+#include <QTextFragment>
+#include <QTextCharFormat>
+#include <QTextFormat>
 #include <QToolButton>
 #include <QVBoxLayout>
 
@@ -84,25 +97,41 @@ void ChatPanel::setupUi() {
     auto *toolRow = new QHBoxLayout();
     toolRow->setContentsMargins(0, 0, 0, 0);
     toolRow->setSpacing(12);
-    auto buildToolButton = [inputArea](const QString &text) {
+    auto createToolButton = [inputArea](const QIcon &icon, const QString &tooltip) {
         auto *btn = new QToolButton(inputArea);
         btn->setObjectName("chatTool");
         btn->setAutoRaise(true);
-        btn->setText(text);
+        btn->setIcon(icon);
+        btn->setIconSize(QSize(20, 20));
+        btn->setToolTip(tooltip);
         return btn;
     };
-    toolRow->addWidget(buildToolButton(tr("截图")));
-    toolRow->addWidget(buildToolButton(tr("收藏")));
-    toolRow->addWidget(buildToolButton(tr("更多")));
+    auto *styleHelper = style();
+    const QIcon emojiIcon(QStringLiteral(":/ui/emotion/101.png"));
+    const QIcon captureIcon = styleHelper ? styleHelper->standardIcon(QStyle::SP_ComputerIcon)
+                                          : QIcon::fromTheme(QStringLiteral("screen-capture"));
+    const QIcon moreIcon = styleHelper ? styleHelper->standardIcon(QStyle::SP_DialogHelpButton)
+                                       : QIcon::fromTheme(QStringLiteral("view-more-symbolic"));
+    const QIcon fileIcon = styleHelper ? styleHelper->standardIcon(QStyle::SP_FileIcon)
+                                       : QIcon::fromTheme(QStringLiteral("document-open"));
+    const QIcon shareIcon = styleHelper ? styleHelper->standardIcon(QStyle::SP_DirLinkIcon)
+                                        : QIcon::fromTheme(QStringLiteral("folder-shared"));
 
-    m_fileButton = new QPushButton(tr("文件"), inputArea);
-    m_fileButton->setObjectName("chatToolButton");
-    m_fileButton->setFlat(true);
+
+    m_emotionButton = createToolButton(emojiIcon, tr(u8"选择要发送的表情"));
+    toolRow->addWidget(m_emotionButton);
+    connect(m_emotionButton, &QToolButton::clicked, this, &ChatPanel::toggleEmotionPopup);
+
+    auto *captureButton = createToolButton(captureIcon, tr(u8"截图"));
+    toolRow->addWidget(captureButton);
+
+    auto *moreButton = createToolButton(moreIcon, tr(u8"更多功能"));
+    toolRow->addWidget(moreButton);
+
+    m_fileButton = createToolButton(fileIcon, tr(u8"发送或接收文件"));
     toolRow->addWidget(m_fileButton);
 
-    m_shareButton = new QPushButton(tr("共享"), inputArea);
-    m_shareButton->setObjectName("chatToolButton");
-    m_shareButton->setFlat(true);
+    m_shareButton = createToolButton(shareIcon, tr(u8"打开共享中心"));
     toolRow->addWidget(m_shareButton);
     toolRow->addStretch(1);
     inputLayout->addLayout(toolRow);
@@ -138,8 +167,8 @@ void ChatPanel::setupUi() {
     setStyleSheet(UiUtils::loadStyleSheet(QStringLiteral(":/ui/qss/ChatPanel.qss")));
 
     connect(m_sendButton, &QPushButton::clicked, this, &ChatPanel::sendRequested);
-    connect(m_fileButton, &QPushButton::clicked, this, &ChatPanel::fileSendRequested);
-    connect(m_shareButton, &QPushButton::clicked, this, &ChatPanel::shareCenterRequested);
+    connect(m_fileButton, &QToolButton::clicked, this, &ChatPanel::fileSendRequested);
+    connect(m_shareButton, &QToolButton::clicked, this, &ChatPanel::shareCenterRequested);
 }
 
 void ChatPanel::setChatHeader(const QString &title, const QString &presence) {
@@ -177,7 +206,34 @@ void ChatPanel::appendTimelineHint(const QString &timestamp, const QString &tag)
 }
 
 QString ChatPanel::inputText() const {
-    return m_inputEdit ? m_inputEdit->toPlainText().trimmed() : QString();
+    if (!m_inputEdit) {
+        return QString();
+    }
+    QString result;
+    const auto *doc = m_inputEdit->document();
+    for (QTextBlock block = doc->begin(); block != doc->end(); block = block.next()) {
+        for (auto it = block.begin(); !it.atEnd(); ++it) {
+            const QTextFragment fragment = it.fragment();
+            if (!fragment.isValid()) {
+                continue;
+            }
+            const QTextCharFormat format = fragment.charFormat();
+            if (format.isImageFormat()) {
+                const QTextImageFormat imageFormat = format.toImageFormat();
+                QString tips = imageFormat.property(QTextFormat::UserProperty).toString();
+                if (tips.isEmpty()) {
+                    tips = imageFormat.name();
+                }
+                result.append(QStringLiteral("[%1]").arg(tips));
+            } else {
+                result.append(fragment.text());
+            }
+        }
+        if (block.next().isValid()) {
+            result.append('\n');
+        }
+    }
+    return result.trimmed();
 }
 
 void ChatPanel::clearInput() {
@@ -290,5 +346,49 @@ void ChatPanel::scrollToLatestMessage() const {
     }
     if (auto *bar = m_messageScroll->verticalScrollBar()) {
         bar->setValue(bar->maximum());
+    }
+}
+
+void ChatPanel::toggleEmotionPopup() {
+    if (!m_emotionButton) {
+        return;
+    }
+    if (!m_emotionPicker) {
+        m_emotionPicker = new EmotionPicker(this);
+        connect(m_emotionPicker, &EmotionPicker::emotionSelected, this, &ChatPanel::insertEmotionText);
+    }
+    if (m_emotionPicker->isVisible()) {
+        m_emotionPicker->hide();
+        return;
+    }
+    const QSize popupSize = m_emotionPicker->sizeHint();
+    QPoint globalPos = m_emotionButton->mapToGlobal(QPoint(0, m_emotionButton->height()));
+    if (popupSize.isValid()) {
+        globalPos.setX(globalPos.x() - (popupSize.width() - m_emotionButton->width()) / 2);
+    }
+    m_emotionPicker->move(globalPos);
+    m_emotionPicker->show();
+    m_emotionPicker->raise();
+}
+
+void ChatPanel::insertEmotionText(const QString &tips, const QString &imageResource) {
+    if (!m_inputEdit) {
+        return;
+    }
+    if (imageResource.isEmpty()) {
+        return;
+    }
+    auto cursor = m_inputEdit->textCursor();
+    QTextImageFormat imageFormat;
+    imageFormat.setName(imageResource);
+    imageFormat.setWidth(28);
+    imageFormat.setHeight(28);
+    imageFormat.setProperty(QTextFormat::UserProperty, tips);
+    cursor.insertImage(imageFormat);
+    cursor.insertText(QStringLiteral(" "));
+    m_inputEdit->setTextCursor(cursor);
+    m_inputEdit->setFocus();
+    if (m_emotionPicker) {
+        m_emotionPicker->hide();
     }
 }
