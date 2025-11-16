@@ -5,6 +5,7 @@
 
 #include <QDateTime>
 #include <QEvent>
+#include <QFile>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QIcon>
@@ -22,9 +23,11 @@
 #include <QTextEdit>
 #include <QTextImageFormat>
 #include <QTextBlock>
+#include <QTextBrowser>
 #include <QTextFragment>
 #include <QTextCharFormat>
 #include <QTextFormat>
+#include <QUrl>
 #include <QToolButton>
 #include <QVBoxLayout>
 
@@ -142,6 +145,9 @@ void ChatPanel::setupUi() {
     m_inputEdit->setMinimumHeight(110);
     m_inputEdit->setMaximumHeight(150);
     m_inputEdit->installEventFilter(this);
+    if (m_inputEdit->document()) {
+        m_inputEdit->document()->setBaseUrl(QUrl(QStringLiteral("qrc:/")));
+    }
     inputLayout->addWidget(m_inputEdit);
 
     auto *sendRow = new QHBoxLayout();
@@ -281,17 +287,23 @@ void ChatPanel::appendChatBubble(const QString &timestamp, const QString &sender
         bubbleLayout->addWidget(senderLabel);
     }
 
-    auto *textLabel = new QLabel(bubble);
-    textLabel->setObjectName("bubbleText");
-    textLabel->setWordWrap(true);
-    textLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    auto *textView = new QTextBrowser(bubble);
+    textView->setObjectName("bubbleText");
+    textView->setFrameShape(QFrame::NoFrame);
+    textView->setFrameShadow(QFrame::Plain);
+    textView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    textView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    textView->setOpenLinks(false);
+    textView->setOpenExternalLinks(false);
+    textView->setReadOnly(true);
+    textView->setFocusPolicy(Qt::NoFocus);
+    textView->document()->setBaseUrl(QUrl(QStringLiteral("qrc:/")));
     QString renderText = text;
     if (!Qt::mightBeRichText(renderText)) {
         renderText = Qt::convertFromPlainText(renderText);
     }
-    textLabel->setTextFormat(Qt::RichText);
-    textLabel->setText(renderText);
-    bubbleLayout->addWidget(textLabel);
+    textView->setHtml(renderText);
+    bubbleLayout->addWidget(textView);
 
     auto *timeLabel = new QLabel(timestamp, bubble);
     timeLabel->setObjectName("bubbleSender");
@@ -365,22 +377,16 @@ void ChatPanel::insertEmotionText(const QString &tips, const QString &imageResou
     if (imageResource.isEmpty()) {
         return;
     }
-    QTextDocument *doc = m_inputEdit->document();
-    if (!doc->resource(QTextDocument::ImageResource, QUrl(imageResource)).isValid()) {
-        QPixmap pix(imageResource);
-        if (!pix.isNull()) {
-            doc->addResource(QTextDocument::ImageResource, QUrl(imageResource), pix);
-        }
+    QString resourceUrl = imageResource;
+    if (resourceUrl.startsWith(QStringLiteral(":/"))) {
+        resourceUrl.replace(0, 1, QStringLiteral("qrc:/"));
     }
-    auto cursor = m_inputEdit->textCursor();
-    QTextImageFormat imageFormat;
-    imageFormat.setName(imageResource);
-    imageFormat.setWidth(28);
-    imageFormat.setHeight(28);
-    imageFormat.setProperty(QTextFormat::UserProperty, tips);
-    cursor.insertImage(imageFormat);
-    cursor.insertText(QStringLiteral(" "));
-    m_inputEdit->setTextCursor(cursor);
+    if (!resourceUrl.startsWith(QStringLiteral("qrc:/")) && QFile::exists(imageResource)) {
+        resourceUrl = QUrl::fromLocalFile(imageResource).toString();
+    }
+    const QString html = QStringLiteral("<img src=\"%1\" alt=\"%2\" width=\"28\" height=\"28\"/> ")
+                             .arg(resourceUrl, tips.toHtmlEscaped());
+    m_inputEdit->textCursor().insertHtml(html);
     m_inputEdit->setFocus();
     if (m_emotionPicker) {
         m_emotionPicker->hide();

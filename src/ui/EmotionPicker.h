@@ -5,6 +5,7 @@
 
 class QGridLayout;
 class QWidget;
+class QMovie;
 
 /*!
  * \brief EmotionPicker 表情选择弹窗，负责展示可用表情并输出用户选择结果
@@ -36,4 +37,5 @@ private:
     QVector<EmotionItem> m_emotions;
     QGridLayout *m_gridLayout = nullptr;
     QWidget *m_container = nullptr;
+    QVector<QMovie *> m_movies;
 };

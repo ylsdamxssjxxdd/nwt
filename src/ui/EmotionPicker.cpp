@@ -8,6 +8,7 @@
 #include <QScrollArea>
 #include <QSizePolicy>
 #include <QSize>
+#include <QMovie>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QXmlStreamReader>
@@ -80,6 +81,13 @@ void EmotionPicker::buildGrid() {
     if (!m_gridLayout) {
         return;
     }
+    for (auto *movie : m_movies) {
+        if (movie) {
+            movie->stop();
+            movie->deleteLater();
+        }
+    }
+    m_movies.clear();
     int row = 0;
     int column = 0;
     int added = 0;
@@ -88,13 +96,31 @@ void EmotionPicker::buildGrid() {
         if (!resourceExists(emotion.thumbPath)) {
             continue;
         }
-        const QPixmap pix(iconPathFor(emotion.thumbPath));
+        const QString iconPath = iconPathFor(emotion.thumbPath);
         auto *button = new QToolButton(m_container);
         button->setAutoRaise(true);
-        button->setIcon(QIcon(pix));
+        button->setIcon(QIcon(QPixmap(iconPath)));
         button->setIconSize(QSize(kIconSize, kIconSize));
         button->setFixedSize(buttonSide, buttonSide);
         button->setToolTip(emotion.tips);
+
+        QMovie *movie = nullptr;
+        if (emotion.imagePath.endsWith(QStringLiteral(".gif"), Qt::CaseInsensitive)
+            && resourceExists(emotion.imagePath)) {
+            movie = new QMovie(iconPathFor(emotion.imagePath), QByteArray(), this);
+            if (!movie->isValid()) {
+                movie->deleteLater();
+                movie = nullptr;
+            } else {
+                movie->setCacheMode(QMovie::CacheAll);
+                connect(movie, &QMovie::frameChanged, button, [button, movie]() {
+                    button->setIcon(QIcon(movie->currentPixmap()));
+                });
+                movie->start();
+                button->setIcon(QIcon(movie->currentPixmap()));
+                m_movies.append(movie);
+            }
+        }
         connect(button, &QToolButton::clicked, this, [this, emotion]() {
             emit emotionSelected(emotion.tips, iconPathFor(emotion.imagePath));
             hide();
