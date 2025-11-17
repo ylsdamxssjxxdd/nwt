@@ -37,6 +37,12 @@ private:
     QWidget *createEmptyState(QWidget *parent);
     void applyContactPanelStyle();
     void setActiveTab(int index);
+    /*!
+     * \brief formatSignatureText ��ǩ������ʽ��������֤�ܹ��Զ��л��У������޸��ַ�����
+     * \param signature ԭʼ��ǩ�ı�����
+     * \return ���� word-break��overflow-wrap ���Ե� HTML �ַ���
+     */
+    QString formatSignatureText(const QString &signature) const;
 
     QListView *m_peerList = nullptr;
     QStackedWidget *m_peerStack = nullptr;
@@ -47,4 +53,3 @@ private:
     QLineEdit *m_searchEdit = nullptr;
     QVector<QToolButton *> m_tabButtons;
 };
-

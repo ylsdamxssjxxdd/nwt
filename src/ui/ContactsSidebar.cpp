@@ -42,7 +42,9 @@ void ContactsSidebar::setProfileInfo(const QString &displayName, const QString &
         m_profileName->setText(displayName.isEmpty() ? tr("EVA-0") : displayName);
     }
     if (m_profileSignature) {
-        m_profileSignature->setText(signature.isEmpty() ? tr("编辑我的签名") : signature);
+        const QString resolved = signature.isEmpty() ? tr("编辑我的签名") : signature;
+        m_profileSignature->setText(formatSignatureText(resolved));
+        m_profileSignature->setToolTip(resolved);
     }
 }
 
@@ -101,10 +103,13 @@ QWidget *ContactsSidebar::buildProfileCard(QWidget *parent) {
     nameRow->addStretch();
     infoLayout->addLayout(nameRow);
 
-    m_profileSignature = new QLabel(tr("编辑我的签名"), frame);
+    const QString defaultSignature = tr("编辑我的签名");
+    m_profileSignature = new QLabel(formatSignatureText(defaultSignature), frame);
     m_profileSignature->setObjectName("profileSignature");
+    m_profileSignature->setTextFormat(Qt::RichText);
     m_profileSignature->setWordWrap(true);
     m_profileSignature->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    m_profileSignature->setToolTip(defaultSignature);
     infoLayout->addWidget(m_profileSignature);
 
     layout->addLayout(infoLayout, 1);
@@ -250,4 +255,12 @@ void ContactsSidebar::setActiveTab(int index) {
             button->setChecked(i == index);
         }
     }
+}
+
+QString ContactsSidebar::formatSignatureText(const QString &signature) const {
+    QString escaped = signature.toHtmlEscaped();
+    escaped.replace(u'\n', QStringLiteral("<br/>"));
+    return QStringLiteral(
+               "<div style=\"white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere;\">%1</div>")
+        .arg(escaped);
 }
