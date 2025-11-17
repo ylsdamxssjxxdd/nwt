@@ -1,5 +1,8 @@
 #include "ChatController.h"
 
+#include "LanguageKeys.h"
+#include "LanguageManager.h"
+
 #include <QAbstractSocket>
 #include <QCoreApplication>
 #include <QDateTime>
@@ -247,7 +250,8 @@ bool ChatController::initialize() {
     }
 
     if (!m_router.startListening(m_listenPort)) {
-        emit controllerWarning(tr("消息路由启动失败"));
+        emit controllerWarning(
+            LanguageManager::text(LangKey::Controller::RouterFailed, QStringLiteral("消息路由启动失败")));
     }
     m_router.setLocalPeerId(m_localId);
     m_router.setLocalDisplayName(m_displayName);
@@ -258,7 +262,11 @@ bool ChatController::initialize() {
     m_discovery.start();
     m_discovery.announceOnline();
 
-    emit statusInfo(tr("启动完成，ID: %1 端口: %2").arg(m_localId).arg(m_listenPort));
+    const QString readyText =
+        LanguageManager::text(LangKey::Controller::StartupReady, QStringLiteral("启动完成，ID: %1 端口: %2"))
+            .arg(m_localId)
+            .arg(m_listenPort);
+    emit statusInfo(readyText);
     persistSettings();
     return true;
 }
@@ -306,7 +314,8 @@ bool ChatController::hasActiveRole() const {
 void ChatController::sendMessageToPeer(const QString &peerId, const QString &text) {
     const PeerInfo peer = findPeer(peerId);
     if (peer.id.isEmpty()) {
-        emit controllerWarning(tr("未找到联系人 %1").arg(peerId));
+        emit controllerWarning(
+            LanguageManager::text(LangKey::Controller::PeerMissing, QStringLiteral("未找到联系人 %1")).arg(peerId));
         return;
     }
     const ProfileDetails profile = m_settings.profile;
@@ -317,13 +326,16 @@ void ChatController::sendMessageToPeer(const QString &peerId, const QString &tex
 void ChatController::sendFileToPeer(const QString &peerId, const QString &filePath) {
     const PeerInfo peer = findPeer(peerId);
     if (peer.id.isEmpty()) {
-        emit controllerWarning(tr("未找到联系人 %1").arg(peerId));
+        emit controllerWarning(
+            LanguageManager::text(LangKey::Controller::PeerMissing, QStringLiteral("未找到联系人 %1")).arg(peerId));
         return;
     }
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
-        emit controllerWarning(tr("无法读取文件: %1").arg(file.errorString()));
+        emit controllerWarning(
+            LanguageManager::text(LangKey::Controller::CannotReadFile, QStringLiteral("无法读取文件: %1"))
+                .arg(file.errorString()));
         return;
     }
 
@@ -336,13 +348,15 @@ void ChatController::sendFileToPeer(const QString &peerId, const QString &filePa
     const RoleProfile profile = activeRole();
     const QString roleName = profile.id.isEmpty() ? m_displayName : profile.name;
     m_router.sendFilePayload(peer, profile.id, roleName, payload);
-    emit statusInfo(tr("已发送文件 %1").arg(file.fileName()));
+    emit statusInfo(
+        LanguageManager::text(LangKey::Controller::FileSent, QStringLiteral("已发送文件 %1")).arg(file.fileName()));
 }
 
 void ChatController::requestPeerShareList(const QString &peerId) {
     const PeerInfo peer = findPeer(peerId);
     if (peer.id.isEmpty()) {
-        emit controllerWarning(tr("未找到联系人 %1").arg(peerId));
+        emit controllerWarning(
+            LanguageManager::text(LangKey::Controller::PeerMissing, QStringLiteral("未找到联系人 %1")).arg(peerId));
         return;
     }
     QJsonObject payload{{QStringLiteral("type"), QStringLiteral("share_request")}};
@@ -352,7 +366,8 @@ void ChatController::requestPeerShareList(const QString &peerId) {
 void ChatController::requestPeerSharedFile(const QString &peerId, const QString &entryId) {
     const PeerInfo peer = findPeer(peerId);
     if (peer.id.isEmpty()) {
-        emit controllerWarning(tr("未找到联系人 %1").arg(peerId));
+        emit controllerWarning(
+            LanguageManager::text(LangKey::Controller::PeerMissing, QStringLiteral("未找到联系人 %1")).arg(peerId));
         return;
     }
     QJsonObject payload{
@@ -365,7 +380,8 @@ void ChatController::requestPeerSharedFile(const QString &peerId, const QString 
 void ChatController::shareCatalogToPeer(const QString &peerId) {
     const PeerInfo peer = findPeer(peerId);
     if (peer.id.isEmpty()) {
-        emit controllerWarning(tr("未找到联系人 %1").arg(peerId));
+        emit controllerWarning(
+            LanguageManager::text(LangKey::Controller::PeerMissing, QStringLiteral("未找到联系人 %1")).arg(peerId));
         return;
     }
     sendShareCatalogToPeer(peer);
@@ -611,7 +627,9 @@ void ChatController::loadSettings() {
 void ChatController::persistSettings() {
     QFile file(configFilePath());
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        emit controllerWarning(tr("无法写入配置: %1").arg(file.errorString()));
+        emit controllerWarning(
+            LanguageManager::text(LangKey::Controller::CannotWriteConfig, QStringLiteral("无法写入配置: %1"))
+                .arg(file.errorString()));
         return;
     }
 
@@ -721,13 +739,16 @@ void ChatController::handleFileMessage(const PeerInfo &peer, const QJsonObject &
     const QString localPath = m_shareManager.saveIncomingFile(fileName, data, &errorString);
     if (localPath.isEmpty()) {
         if (!errorString.isEmpty()) {
-            emit controllerWarning(tr("无法保存文件: %1").arg(errorString));
+            emit controllerWarning(
+                LanguageManager::text(LangKey::Controller::CannotSaveFile, QStringLiteral("无法保存文件: %1"))
+                    .arg(errorString));
         }
         return;
     }
     const QString roleName = payload.value(QStringLiteral("roleName")).toString(peer.displayName);
     emit fileReceived(peer, roleName, fileName, localPath);
-    emit statusInfo(tr("已保存来自 %1 的文件 %2").arg(peer.displayName, fileName));
+    emit statusInfo(LanguageManager::text(LangKey::Controller::FileSaved, QStringLiteral("已保存来自 %1 的文件 %2"))
+                        .arg(peer.displayName, fileName));
 }
 
 void ChatController::handleShareCatalog(const PeerInfo &peer, const QJsonObject &payload) {
@@ -755,7 +776,8 @@ void ChatController::handleShareDownload(const PeerInfo &peer, const QJsonObject
         return;
     }
     if (!m_shareManager.hasLocalEntry(entryId)) {
-        emit controllerWarning(tr("共享条目不存在或已失效"));
+        emit controllerWarning(
+            LanguageManager::text(LangKey::Controller::ShareMissing, QStringLiteral("共享条目不存在或已失效")));
         return;
     }
     const SharedFileInfo info = m_shareManager.localEntry(entryId);

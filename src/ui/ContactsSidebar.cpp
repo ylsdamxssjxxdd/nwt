@@ -1,6 +1,8 @@
 #include "ContactsSidebar.h"
 
 #include "StyleHelper.h"
+#include "core/LanguageKeys.h"
+#include "core/LanguageManager.h"
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -39,10 +41,17 @@ QListView *ContactsSidebar::peerListView() const {
 
 void ContactsSidebar::setProfileInfo(const QString &displayName, const QString &signature) {
     if (m_profileName) {
-        m_profileName->setText(displayName.isEmpty() ? tr("EVA-0") : displayName);
+        const QString name =
+            displayName.isEmpty()
+                ? LanguageManager::text(LangKey::ProfileCard::DefaultName, QStringLiteral("EVA-0"))
+                : displayName;
+        m_profileName->setText(name);
     }
     if (m_profileSignature) {
-        const QString resolved = signature.isEmpty() ? tr("编辑我的签名") : signature;
+        const QString resolved =
+            signature.isEmpty()
+                ? LanguageManager::text(LangKey::ProfileCard::EditSignature, QStringLiteral("编辑我的签名"))
+                : signature;
         m_profileSignature->setText(formatSignatureText(resolved));
         m_profileSignature->setToolTip(resolved);
     }
@@ -50,7 +59,9 @@ void ContactsSidebar::setProfileInfo(const QString &displayName, const QString &
 
 void ContactsSidebar::setAvatarLetter(const QString &letter) {
     if (m_avatarLabel) {
-        const QString resolved = letter.isEmpty() ? tr("E") : letter.left(1).toUpper();
+        const QString resolved =
+            letter.isEmpty() ? LanguageManager::text(LangKey::ProfileCard::DefaultInitial, QStringLiteral("E"))
+                             : letter.left(1).toUpper();
         m_avatarLabel->setText(resolved);
     }
 }
@@ -71,7 +82,8 @@ QWidget *ContactsSidebar::buildProfileCard(QWidget *parent) {
     layout->setContentsMargins(16, 12, 16, 12);
     layout->setSpacing(12);
 
-    m_avatarLabel = new QPushButton(tr("E"), frame);
+    m_avatarLabel = new QPushButton(
+        LanguageManager::text(LangKey::ProfileCard::DefaultInitial, QStringLiteral("E")), frame);
     m_avatarLabel->setObjectName("avatarLabel");
     m_avatarLabel->setFixedSize(88, 88);
     m_avatarLabel->setFlat(true);
@@ -86,7 +98,8 @@ QWidget *ContactsSidebar::buildProfileCard(QWidget *parent) {
 
     auto *nameRow = new QHBoxLayout();
     nameRow->setSpacing(6);
-    m_profileName = new QLabel(tr("EVA-0"), frame);
+    m_profileName = new QLabel(
+        LanguageManager::text(LangKey::ProfileCard::DefaultName, QStringLiteral("EVA-0")), frame);
     m_profileName->setObjectName("profileName");
     m_profileName->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     nameRow->addWidget(m_profileName);
@@ -103,7 +116,8 @@ QWidget *ContactsSidebar::buildProfileCard(QWidget *parent) {
     nameRow->addStretch();
     infoLayout->addLayout(nameRow);
 
-    const QString defaultSignature = tr("编辑我的签名");
+    const QString defaultSignature =
+        LanguageManager::text(LangKey::ProfileCard::EditSignature, QStringLiteral("编辑我的签名"));
     m_profileSignature = new QLabel(formatSignatureText(defaultSignature), frame);
     m_profileSignature->setObjectName("profileSignature");
     m_profileSignature->setTextFormat(Qt::RichText);
@@ -125,17 +139,24 @@ QWidget *ContactsSidebar::buildProfileCard(QWidget *parent) {
     auto *actionLayout = new QVBoxLayout();
     actionLayout->setContentsMargins(0, 0, 0, 0);
     actionLayout->setSpacing(8);
-    auto *refreshButton = createProfileAction(QStyle::SP_BrowserReload, tr("刷新状态"));
-    auto *settingsButton = createProfileAction(QStyle::SP_FileDialogDetailedView, tr("打开设置"));
+    auto *refreshButton = createProfileAction(
+        QStyle::SP_BrowserReload,
+        LanguageManager::text(LangKey::ProfileCard::RefreshStatus, QStringLiteral("刷新状态")));
+    auto *settingsButton = createProfileAction(
+        QStyle::SP_FileDialogDetailedView,
+        LanguageManager::text(LangKey::ProfileCard::OpenSettings, QStringLiteral("打开设置")));
     actionLayout->addWidget(refreshButton, 0, Qt::AlignRight);
     actionLayout->addWidget(settingsButton, 0, Qt::AlignRight);
     actionLayout->addStretch(1);
     layout->addLayout(actionLayout);
 
-    connect(statusButton, &QToolButton::clicked, this,
-            [this]() { emit statusHintRequested(tr("当前为在线状态，后续可切换")); });
+    connect(statusButton, &QToolButton::clicked, this, [this]() {
+        emit statusHintRequested(LanguageManager::text(LangKey::ProfileCard::StatusOnline, QStringLiteral("当前为在线状态，后续可切换")));
+    });
     connect(m_avatarLabel, &QPushButton::clicked, this, &ContactsSidebar::profileRequested);
-    connect(refreshButton, &QToolButton::clicked, this, [this]() { emit statusHintRequested(tr("正在刷新状态...")); });
+    connect(refreshButton, &QToolButton::clicked, this, [this]() {
+        emit statusHintRequested(LanguageManager::text(LangKey::ProfileCard::StatusRefreshing, QStringLiteral("正在刷新状态...")));
+    });
     connect(settingsButton, &QToolButton::clicked, this, &ContactsSidebar::settingsRequested);
 
     return frame;
@@ -152,7 +173,8 @@ QWidget *ContactsSidebar::buildSearchRow(QWidget *parent) {
 
     m_searchEdit = new QLineEdit(frame);
     m_searchEdit->setObjectName("searchField");
-    m_searchEdit->setPlaceholderText(tr("搜索联系人、群组、应用"));
+    m_searchEdit->setPlaceholderText(
+        LanguageManager::text(LangKey::ProfileCard::SearchPlaceholder, QStringLiteral("搜索联系人、群组、应用")));
     layout->addWidget(m_searchEdit, 1);
 
     return frame;
@@ -173,10 +195,13 @@ QWidget *ContactsSidebar::buildTabBar(QWidget *parent) {
     };
 
     const QVector<TabConfig> configs = {
-        {QStyle::SP_MessageBoxInformation, tr("我的联系人")},
-        {QStyle::SP_FileDialogDetailedView, tr("我的群组")},
-        {QStyle::SP_ComputerIcon, tr("组织架构")},
-        {QStyle::SP_FileDialogContentsView, tr("协同办公")}
+        {QStyle::SP_MessageBoxInformation,
+         LanguageManager::text(LangKey::ProfileCard::Contacts, QStringLiteral("我的联系人"))},
+        {QStyle::SP_FileDialogDetailedView,
+         LanguageManager::text(LangKey::ProfileCard::Groups, QStringLiteral("我的群组"))},
+        {QStyle::SP_ComputerIcon, LanguageManager::text(LangKey::ProfileCard::Org, QStringLiteral("组织架构"))},
+        {QStyle::SP_FileDialogContentsView,
+         LanguageManager::text(LangKey::ProfileCard::Collaboration, QStringLiteral("协同办公"))}
     };
 
     m_tabButtons.clear();
@@ -230,11 +255,14 @@ QWidget *ContactsSidebar::createEmptyState(QWidget *parent) {
     auto *layout = new QVBoxLayout(placeholder);
     layout->setContentsMargins(0, 32, 0, 32);
     layout->setSpacing(12);
-    auto *iconLabel = new QLabel(tr("通"), placeholder);
+    auto *iconLabel =
+        new QLabel(LanguageManager::text(LangKey::ProfileCard::EmptyIcon, QStringLiteral("通")), placeholder);
     iconLabel->setObjectName("emptyIcon");
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setFixedSize(72, 72);
-    auto *label = new QLabel(tr("当前没有在线联系人\n稍后再来刷新"), placeholder);
+    auto *label = new QLabel(
+        LanguageManager::text(LangKey::ProfileCard::EmptyText, QStringLiteral("当前没有在线联系人\n稍后再来刷新")),
+        placeholder);
     label->setObjectName("emptyText");
     label->setAlignment(Qt::AlignCenter);
     label->setWordWrap(true);

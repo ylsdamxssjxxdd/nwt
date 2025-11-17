@@ -5,6 +5,8 @@
 #include "PeerListModel.h"
 #include "ProfileDialog.h"
 #include "SettingsDialog.h"
+#include "core/LanguageKeys.h"
+#include "core/LanguageManager.h"
 
 #include <QDateTime>
 #include <QFileDialog>
@@ -67,7 +69,7 @@ void MainWindow::setupUi() {
 
     setCentralWidget(central);
     setMinimumSize(960, 600);
-    setWindowTitle(tr("内网通 - 连接每一位同伴"));
+    setWindowTitle(LanguageManager::text(LangKey::MainWindow::Title, QStringLiteral("内网通 - 连接每一位同伴")));
 }
 
 void MainWindow::updatePeerPlaceholder() {
@@ -84,7 +86,9 @@ void MainWindow::refreshProfileCard() {
     }
     const ProfileDetails profile = m_controller->profileDetails();
     const QString displayName = profile.name.isEmpty() ? m_controller->localDisplayName() : profile.name;
-    const QString signature = profile.signature.isEmpty() ? tr("编辑我的签名") : profile.signature;
+    const QString signature = profile.signature.isEmpty()
+                                  ? LanguageManager::text(LangKey::ProfileCard::EditSignature, QStringLiteral("编辑我的签名"))
+                                  : profile.signature;
     m_contactsSidebar->setProfileInfo(displayName, signature);
     m_contactsSidebar->setAvatarLetter(displayName.left(1));
 }
@@ -105,14 +109,17 @@ void MainWindow::handleSend() {
         return;
     }
     if (m_currentPeerId.isEmpty()) {
-        showStatus(tr("请先选择联系人"));
+        showStatus(LanguageManager::text(LangKey::MainWindow::SelectContactHint, QStringLiteral("请先选择联系人")));
         return;
     }
 
     m_controller->sendMessageToPeer(m_currentPeerId, text);
     const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
     const ProfileDetails profile = m_controller->profileDetails();
-    const QString roleDisplay = profile.name.isEmpty() ? tr("我") : profile.name;
+    const QString roleDisplay =
+        profile.name.isEmpty()
+            ? LanguageManager::text(LangKey::MainWindow::DefaultRoleName, QStringLiteral("我"))
+            : profile.name;
     m_chatPanel->appendTimelineHint(timestamp, QString());
     m_chatPanel->appendOutgoingMessage(timestamp, roleDisplay, text);
     m_chatPanel->clearInput();
@@ -124,10 +131,11 @@ void MainWindow::handleSendFile() {
         return;
     }
     if (m_currentPeerId.isEmpty()) {
-        showStatus(tr("请先选择联系人"));
+        showStatus(LanguageManager::text(LangKey::MainWindow::SelectContactHint, QStringLiteral("请先选择联系人")));
         return;
     }
-    const QString filePath = QFileDialog::getOpenFileName(this, tr("选择要发送的文件"));
+    const QString filePath = QFileDialog::getOpenFileName(
+        this, LanguageManager::text(LangKey::MainWindow::FileDialogTitle, QStringLiteral("选择要发送的文件")));
     if (filePath.isEmpty()) {
         return;
     }
@@ -141,7 +149,8 @@ void MainWindow::handlePeerSelection(const QModelIndex &index) {
 
     m_currentPeerId = index.data(PeerListModel::IdRole).toString();
     const QString display = index.data(Qt::DisplayRole).toString();
-    showStatus(tr("已选中 %1").arg(display));
+    showStatus(
+        LanguageManager::text(LangKey::MainWindow::FileSelected, QStringLiteral("已选中 %1")).arg(display));
     updateChatHeader(display);
     if (m_shareDialog) {
         m_shareDialog->setPeerId(m_currentPeerId);
@@ -194,8 +203,11 @@ void MainWindow::handleFileReceived(const PeerInfo &peer, const QString &roleNam
     }
     const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
     const QString sender = roleName.isEmpty() ? peer.displayName : QStringLiteral("%1(%2)").arg(peer.displayName, roleName);
-    const QString message = tr("发送的文件 %1 已保存到 %2").arg(fileName, path);
-    m_chatPanel->appendTimelineHint(timestamp, tr("文件"));
+    const QString message =
+        LanguageManager::text(LangKey::MainWindow::FileSaved, QStringLiteral("发送的文件 %1 已保存到 %2"))
+            .arg(fileName, path);
+    m_chatPanel->appendTimelineHint(
+        timestamp, LanguageManager::text(LangKey::MainWindow::FileTag, QStringLiteral("文件")));
     m_chatPanel->appendIncomingMessage(timestamp, sender, message);
 }
 
@@ -219,4 +231,3 @@ void MainWindow::openShareCenter() {
     m_shareDialog->raise();
     m_shareDialog->activateWindow();
 }
-

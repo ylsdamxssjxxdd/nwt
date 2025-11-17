@@ -17,6 +17,7 @@ set(SOURCES
     src/core/MessageRouter.cpp
     src/core/ShareManager.cpp
     src/core/ChatController.cpp
+    src/core/LanguageManager.cpp
     src/ui/MainWindow.cpp
     src/ui/SettingsDialog.cpp
     src/ui/ShareCenterDialog.cpp

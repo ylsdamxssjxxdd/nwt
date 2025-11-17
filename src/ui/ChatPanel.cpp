@@ -3,6 +3,8 @@
 #include "EmotionPicker.h"
 #include "EmojiImageHandler.h"
 #include "StyleHelper.h"
+#include "core/LanguageKeys.h"
+#include "core/LanguageManager.h"
 
 #include <QDateTime>
 #include <QEvent>
@@ -52,11 +54,13 @@ void ChatPanel::setupUi() {
     auto *headerInfo = new QVBoxLayout();
     headerInfo->setContentsMargins(0, 0, 0, 0);
     headerInfo->setSpacing(4);
-    m_chatNameLabel = new QLabel(tr("选择联系人"), header);
+    m_chatNameLabel = new QLabel(
+        LanguageManager::text(LangKey::Chat::SelectContact, QStringLiteral("选择联系人")), header);
     m_chatNameLabel->setObjectName("chatName");
     headerInfo->addWidget(m_chatNameLabel);
 
-    m_chatPresenceLabel = new QLabel(tr("尚未连接"), header);
+    m_chatPresenceLabel = new QLabel(
+        LanguageManager::text(LangKey::Chat::StatusDisconnected, QStringLiteral("尚未连接")), header);
     m_chatPresenceLabel->setObjectName("chatPresence");
     headerInfo->addWidget(m_chatPresenceLabel);
     headerLayout->addLayout(headerInfo);
@@ -81,7 +85,9 @@ void ChatPanel::setupUi() {
     m_messageLayout->setContentsMargins(32, 24, 32, 24);
     m_messageLayout->setSpacing(12);
 
-    m_chatEmptyLabel = new QLabel(tr("选择联系人后即可开始对话"), m_messageViewport);
+    m_chatEmptyLabel =
+        new QLabel(LanguageManager::text(LangKey::Chat::EmptyHint, QStringLiteral("选择联系人后即可开始对话")),
+                   m_messageViewport);
     m_chatEmptyLabel->setObjectName("chatEmpty");
     m_chatEmptyLabel->setAlignment(Qt::AlignCenter);
     m_chatEmptyLabel->setWordWrap(true);
@@ -122,27 +128,33 @@ void ChatPanel::setupUi() {
                                         : QIcon::fromTheme(QStringLiteral("folder-shared"));
 
 
-    m_emotionButton = createToolButton(emojiIcon, tr(u8"选择要发送的表情"));
+    m_emotionButton = createToolButton(
+        emojiIcon, LanguageManager::text(LangKey::Chat::EmojiTooltip, QStringLiteral("选择要发送的表情")));
     toolRow->addWidget(m_emotionButton);
     connect(m_emotionButton, &QToolButton::clicked, this, &ChatPanel::toggleEmotionPopup);
 
-    auto *captureButton = createToolButton(captureIcon, tr(u8"截图"));
+    auto *captureButton =
+        createToolButton(captureIcon, LanguageManager::text(LangKey::Chat::ScreenshotTooltip, QStringLiteral("截图")));
     toolRow->addWidget(captureButton);
 
-    auto *moreButton = createToolButton(moreIcon, tr(u8"更多功能"));
+    auto *moreButton =
+        createToolButton(moreIcon, LanguageManager::text(LangKey::Chat::MoreFeatureTooltip, QStringLiteral("更多功能")));
     toolRow->addWidget(moreButton);
 
-    m_fileButton = createToolButton(fileIcon, tr(u8"发送或接收文件"));
+    m_fileButton =
+        createToolButton(fileIcon, LanguageManager::text(LangKey::Chat::FileTooltip, QStringLiteral("发送或接收文件")));
     toolRow->addWidget(m_fileButton);
 
-    m_shareButton = createToolButton(shareIcon, tr(u8"打开共享中心"));
+    m_shareButton =
+        createToolButton(shareIcon, LanguageManager::text(LangKey::Chat::ShareTooltip, QStringLiteral("打开共享中心")));
     toolRow->addWidget(m_shareButton);
     toolRow->addStretch(1);
     inputLayout->addLayout(toolRow);
 
     m_inputEdit = new QTextEdit(inputArea);
     m_inputEdit->setObjectName("chatInput");
-    m_inputEdit->setPlaceholderText(tr("Enter 发送，Shift+Enter 换行"));
+    m_inputEdit->setPlaceholderText(
+        LanguageManager::text(LangKey::Chat::InputPlaceholder, QStringLiteral("Enter 发送，Shift+Enter 换行")));
     m_inputEdit->setMinimumHeight(110);
     m_inputEdit->setMaximumHeight(150);
     m_inputEdit->installEventFilter(this);
@@ -156,7 +168,8 @@ void ChatPanel::setupUi() {
     sendRow->setContentsMargins(0, 0, 0, 0);
     sendRow->setSpacing(12);
     sendRow->addStretch(1);
-    m_sendButton = new QPushButton(tr("发 送 (S)"), inputArea);
+    m_sendButton = new QPushButton(
+        LanguageManager::text(LangKey::Chat::SendButton, QStringLiteral("发 送 (S)")), inputArea);
     m_sendButton->setObjectName("sendButton");
     sendRow->addWidget(m_sendButton);
     inputLayout->addLayout(sendRow);
@@ -167,7 +180,8 @@ void ChatPanel::setupUi() {
     auto *statusLayout = new QHBoxLayout(statusBar);
     statusLayout->setContentsMargins(32, 8, 32, 8);
     statusLayout->setSpacing(8);
-    m_statusLabel = new QLabel(tr("未连接"), statusBar);
+    m_statusLabel =
+        new QLabel(LanguageManager::text(LangKey::Chat::StatusDisconnected, QStringLiteral("未连接")), statusBar);
     m_statusLabel->setObjectName("statusLabel");
     statusLayout->addWidget(m_statusLabel);
     layout->addWidget(statusBar, 0);
@@ -181,10 +195,13 @@ void ChatPanel::setupUi() {
 
 void ChatPanel::setChatHeader(const QString &title, const QString &presence) {
     if (m_chatNameLabel) {
-        m_chatNameLabel->setText(title.isEmpty() ? tr("选择联系人") : title);
+        m_chatNameLabel->setText(
+            title.isEmpty() ? LanguageManager::text(LangKey::Chat::SelectContact, QStringLiteral("选择联系人")) : title);
     }
     if (m_chatPresenceLabel) {
-        const QString fallback = title.isEmpty() ? tr("尚未连接") : tr("已连接，可立即开始对话");
+        const QString fallback = title.isEmpty()
+                                     ? LanguageManager::text(LangKey::Chat::StatusDisconnected, QStringLiteral("尚未连接"))
+                                     : LanguageManager::text(LangKey::Chat::StatusReady, QStringLiteral("已连接，可立即开始对话"));
         m_chatPresenceLabel->setText(presence.isEmpty() ? fallback : presence);
     }
 }
