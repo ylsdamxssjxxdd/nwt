@@ -9,6 +9,8 @@
 #include <QString>
 #include <QVector>
 
+class PeerInfo;
+
 /*!
  * \brief 聊天消息方向。
  */
@@ -56,6 +58,23 @@ public:
     void saveState(const PersistedState &state);
     void storeMessage(const StoredMessage &message);
     QVector<StoredMessage> recentMessages(const QString &peerId, int limit = 100) const;
+    /*!
+     * \brief recentPeerIds 返回按照最近消息时间倒序排序的对话联系人 ID 列表。
+     * \param limit 最多返回的联系人数量上限
+     * \return 去重后的联系人 ID 列表，最近有消息往来的联系人排在前面
+     */
+    QVector<QString> recentPeerIds(int limit = 100) const;
+
+    /*!
+     * \brief upsertKnownPeer 将发现到的联系人写入或更新到“已知联系人”表。
+     * \param peer 当前发现到的联系人信息
+     */
+    void upsertKnownPeer(const PeerInfo &peer);
+    /*!
+     * \brief knownPeers 读取历史上发现过的联系人列表。
+     * \return 已持久化的联系人集合
+     */
+    QList<PeerInfo> knownPeers() const;
 
 private:
     QSqlDatabase connection() const;

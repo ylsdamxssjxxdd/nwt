@@ -16,6 +16,11 @@ class ContactsSidebar : public QFrame {
     Q_OBJECT
 
 public:
+    /*!
+     * \brief TabIndex 顶部标签按钮索引，与“最近聊天/联系人/群聊”一一对应。
+     */
+    enum TabIndex { RecentTab = 0, ContactsTab = 1, GroupsTab = 2 };
+
     explicit ContactsSidebar(QWidget *parent = nullptr);
 
     QListView *peerListView() const;
@@ -27,6 +32,11 @@ signals:
     void profileRequested();
     void settingsRequested();
     void statusHintRequested(const QString &text);
+    /*!
+     * \brief tabChanged 当用户切换“最近聊天/联系人/群聊”标签时发出。
+     * \param index 参见 TabIndex
+     */
+    void tabChanged(int index);
 
 private:
     void setupUi();

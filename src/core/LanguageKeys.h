@@ -43,6 +43,7 @@ constexpr int Org = 30011;
 constexpr int Collaboration = 30012;
 constexpr int EmptyIcon = 30013;
 constexpr int EmptyText = 30014;
+constexpr int RecentChats = 30015;
 } // namespace ProfileCard
 
 namespace Controller {

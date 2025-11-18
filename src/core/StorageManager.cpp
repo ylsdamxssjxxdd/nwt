@@ -1,5 +1,7 @@
 #include "StorageManager.h"
 
+#include "PeerInfo.h"
+
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
@@ -364,6 +366,90 @@ QVector<StoredMessage> StorageManager::recentMessages(const QString &peerId, int
     return messages;
 }
 
+QVector<QString> StorageManager::recentPeerIds(int limit) const {
+    QVector<QString> peers;
+    if (!m_initialized || limit <= 0) {
+        return peers;
+    }
+    QSqlDatabase db = connection();
+    if (!db.isValid()) {
+        return peers;
+    }
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral("SELECT peer_id, MAX(created_at) AS last_ts "
+                                 "FROM chat_messages "
+                                 "GROUP BY peer_id "
+                                 "ORDER BY last_ts DESC "
+                                 "LIMIT ?"));
+    query.addBindValue(limit);
+    if (query.exec()) {
+        while (query.next()) {
+            const QString peerId = query.value(0).toString();
+            if (!peerId.isEmpty()) {
+                peers.append(peerId);
+            }
+        }
+    }
+    return peers;
+}
+
+void StorageManager::upsertKnownPeer(const PeerInfo &peer) {
+    if (!m_initialized || peer.id.isEmpty()) {
+        return;
+    }
+    QSqlDatabase db = connection();
+    if (!db.isValid()) {
+        return;
+    }
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral("REPLACE INTO known_peers(peer_id, display_name, address, listen_port, last_seen,"
+                                 " capabilities) VALUES (?, ?, ?, ?, ?, ?)"));
+    query.addBindValue(peer.id);
+    query.addBindValue(peer.displayName);
+    query.addBindValue(peer.address.toString());
+    query.addBindValue(static_cast<int>(peer.listenPort));
+    const qint64 ts = peer.lastSeen.isValid() ? peer.lastSeen.toSecsSinceEpoch()
+                                              : QDateTime::currentSecsSinceEpoch();
+    query.addBindValue(ts);
+    query.addBindValue(peer.capabilities);
+    query.exec();
+}
+
+QList<PeerInfo> StorageManager::knownPeers() const {
+    QList<PeerInfo> list;
+    if (!m_initialized) {
+        return list;
+    }
+    QSqlDatabase db = connection();
+    if (!db.isValid()) {
+        return list;
+    }
+    QSqlQuery query(db);
+    if (!query.exec(QStringLiteral("SELECT peer_id, display_name, address, listen_port, last_seen, capabilities"
+                                   " FROM known_peers ORDER BY last_seen DESC"))) {
+        return list;
+    }
+    while (query.next()) {
+        PeerInfo info;
+        info.id = query.value(0).toString();
+        info.displayName = query.value(1).toString();
+        const QString addr = query.value(2).toString();
+        if (!addr.isEmpty()) {
+            info.address = QHostAddress(addr);
+        }
+        info.listenPort = static_cast<quint16>(query.value(3).toInt());
+        const qint64 ts = query.value(4).toLongLong();
+        if (ts > 0) {
+            info.lastSeen = QDateTime::fromSecsSinceEpoch(ts).toUTC();
+        }
+        info.capabilities = query.value(5).toString();
+        if (!info.id.isEmpty()) {
+            list.append(info);
+        }
+    }
+    return list;
+}
+
 QSqlDatabase StorageManager::connection() const {
     return QSqlDatabase::database(m_connectionName);
 }
@@ -492,6 +578,15 @@ void StorageManager::ensureSchema(QSqlDatabase &db) const {
         created_at INTEGER NOT NULL\
     )"));
     query.exec(QStringLiteral("CREATE INDEX IF NOT EXISTS idx_chat_messages_peer ON chat_messages(peer_id, created_at DESC)"));
+
+    query.exec(QStringLiteral("CREATE TABLE IF NOT EXISTS known_peers (\
+        peer_id TEXT PRIMARY KEY,\
+        display_name TEXT,\
+        address TEXT,\
+        listen_port INTEGER,\
+        last_seen INTEGER,\
+        capabilities TEXT\
+    )"));
 }
 
 void StorageManager::writeGeneralSettings(const AppSettings &settings, QSqlDatabase &db) const {

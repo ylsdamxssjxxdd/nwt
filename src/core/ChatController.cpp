@@ -251,6 +251,11 @@ ChatController::ChatController(QObject *parent) : QObject(parent) {
     qRegisterMetaType<QList<SharedFileInfo>>("QList<SharedFileInfo>");
 
     connect(&m_discovery, &DiscoveryService::peerDiscovered, &m_peerDirectory, &PeerDirectory::upsertPeer);
+    connect(&m_discovery, &DiscoveryService::peerDiscovered, this, [this](const PeerInfo &info) {
+        if (m_storageReady) {
+            m_storage.upsertKnownPeer(info);
+        }
+    });
     connect(&m_discovery, &DiscoveryService::discoveryWarning, this, &ChatController::controllerWarning);
     connect(&m_router, &MessageRouter::routerWarning, this, &ChatController::controllerWarning);
     connect(&m_router, &MessageRouter::messageReceived, this, &ChatController::handleRouterMessage);
@@ -268,6 +273,7 @@ bool ChatController::initialize() {
             LangKey::Controller::CannotWriteConfig, QStringLiteral("无法初始化配置数据库，设置将不会持久化。")));
     }
     loadSettings();
+    loadKnownPeers();
     initializeRoles();
     if (m_settings.activeRoleId.isEmpty() && !m_roles.isEmpty()) {
         m_settings.activeRoleId = m_roles.front().id;
@@ -328,6 +334,23 @@ QVector<StoredMessage> ChatController::recentMessages(const QString &peerId, int
         return {};
     }
     return m_storage.recentMessages(peerId, limit);
+}
+
+QVector<QString> ChatController::recentPeerIds(int limit) const {
+    if (!m_storageReady || limit <= 0) {
+        return {};
+    }
+    return m_storage.recentPeerIds(limit);
+}
+
+void ChatController::loadKnownPeers() {
+    if (!m_storageReady) {
+        return;
+    }
+    const QList<PeerInfo> peers = m_storage.knownPeers();
+    for (const PeerInfo &peer : peers) {
+        m_peerDirectory.upsertPeer(peer);
+    }
 }
 
 QVector<RoleProfile> ChatController::availableRoles() const {

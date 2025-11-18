@@ -3,6 +3,7 @@
 #include "ChatPanel.h"
 #include "ContactsSidebar.h"
 #include "PeerListModel.h"
+#include "RecentChatListModel.h"
 #include "ProfileDialog.h"
 #include "SettingsDialog.h"
 #include "core/LanguageKeys.h"
@@ -14,6 +15,7 @@
 #include <QHBoxLayout>
 #include <QItemSelectionModel>
 #include <QListView>
+#include <QStandardItemModel>
 #include <algorithm>
 
 MainWindow::MainWindow(ChatController *controller, QWidget *parent)
@@ -25,15 +27,16 @@ MainWindow::MainWindow(ChatController *controller, QWidget *parent)
 
     if (auto *directory = m_controller->peerDirectory()) {
         m_peerListModel = new PeerListModel(directory, this);
-        if (m_peerList) {
-            m_peerList->setModel(m_peerListModel);
-            if (auto *selection = m_peerList->selectionModel()) {
-                connect(selection, &QItemSelectionModel::currentChanged, this,
-                        [this](const QModelIndex &current, const QModelIndex &) { handlePeerSelection(current); });
-            }
-            connect(m_peerList, &QListView::clicked, this, &MainWindow::handlePeerSelection);
-        }
         connect(directory, &PeerDirectory::peerListChanged, this, &MainWindow::updatePeerPlaceholder);
+    }
+
+    m_recentListModel = new RecentChatListModel(m_controller, this);
+    m_groupListModel = new QStandardItemModel(this);
+
+    if (m_peerList) {
+        // 默认进入“最近聊天”标签
+        m_peerList->setModel(m_recentListModel);
+        connect(m_peerList, &QListView::clicked, this, &MainWindow::handlePeerSelection);
     }
 
     connect(m_chatPanel, &ChatPanel::sendRequested, this, &MainWindow::handleSend);
@@ -51,6 +54,10 @@ MainWindow::MainWindow(ChatController *controller, QWidget *parent)
     connect(m_controller, &ChatController::controllerWarning, this, &MainWindow::showStatus);
     connect(m_controller, &ChatController::roleChanged, this, [this]() { refreshProfileCard(); });
     connect(m_controller, &ChatController::profileUpdated, this, [this](const ProfileDetails &) { refreshProfileCard(); });
+
+    if (m_contactsSidebar) {
+        connect(m_contactsSidebar, &ContactsSidebar::tabChanged, this, &MainWindow::handleSidebarTabChanged);
+    }
 
     refreshProfileCard();
     updatePeerPlaceholder();
@@ -74,11 +81,41 @@ void MainWindow::setupUi() {
     setWindowTitle(LanguageManager::text(LangKey::MainWindow::Title, QStringLiteral("内网通 - 连接每一位同伴")));
 }
 
+void MainWindow::handleSidebarTabChanged(int index) {
+    if (!m_peerList || !m_controller) {
+        return;
+    }
+
+    switch (index) {
+    case ContactsSidebar::RecentTab:
+        if (m_recentListModel) {
+            m_recentListModel->refresh();
+            m_peerList->setModel(m_recentListModel);
+        }
+        break;
+    case ContactsSidebar::ContactsTab:
+        if (m_peerListModel) {
+            m_peerList->setModel(m_peerListModel);
+        }
+        break;
+    case ContactsSidebar::GroupsTab:
+        if (m_groupListModel) {
+            m_peerList->setModel(m_groupListModel);
+        }
+        break;
+    default:
+        break;
+    }
+    updatePeerPlaceholder();
+}
+
 void MainWindow::updatePeerPlaceholder() {
-    const bool hasPeers = m_controller && m_controller->peerDirectory()
-                          && m_controller->peerDirectory()->peerCount() > 0;
+    bool hasItems = false;
+    if (m_peerList && m_peerList->model()) {
+        hasItems = m_peerList->model()->rowCount() > 0;
+    }
     if (m_contactsSidebar) {
-        m_contactsSidebar->setPeerPlaceholderVisible(hasPeers);
+        m_contactsSidebar->setPeerPlaceholderVisible(hasItems);
     }
 }
 
@@ -158,6 +195,10 @@ void MainWindow::handleSend() {
     m_chatPanel->appendOutgoingMessage(timestamp, roleDisplay, text);
     m_chatPanel->clearInput();
     m_chatPanel->focusInput();
+    if (m_recentListModel) {
+        m_recentListModel->refresh();
+    }
+    updatePeerPlaceholder();
 }
 
 void MainWindow::handleSendFile() {
@@ -202,6 +243,10 @@ void MainWindow::appendMessage(const PeerInfo &peer, const QString &roleName, co
     const QString speaker = roleName.isEmpty() ? label : QStringLiteral("%1(%2)").arg(label, roleName);
     m_chatPanel->appendTimelineHint(timestamp, QString());
     m_chatPanel->appendIncomingMessage(timestamp, speaker, text);
+    if (m_recentListModel) {
+        m_recentListModel->refresh();
+    }
+    updatePeerPlaceholder();
 }
 
 void MainWindow::showStatus(const QString &text) {

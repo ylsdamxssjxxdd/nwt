@@ -36,6 +36,12 @@ public:
     bool requiresRoleSelection() const { return !m_hasStoredRole; }
     ProfileDetails profileDetails() const;
     QVector<StoredMessage> recentMessages(const QString &peerId, int limit = 200);
+    /*!
+     * \brief recentPeerIds 返回最近有消息往来的联系人 ID 列表。
+     * \param limit 最多返回的联系人数量上限
+     * \return 最近联系人 ID 列表，按最近消息时间倒序排序
+     */
+    QVector<QString> recentPeerIds(int limit = 100) const;
 
 public slots:
     void sendMessageToPeer(const QString &peerId, const QString &text);
@@ -71,6 +77,7 @@ private:
     QString dataDirectoryPath() const;
     QString databaseFilePath() const;
     void loadSettings();
+    void loadKnownPeers();
     void recordChatHistory(const QString &peerId, const QString &roleName, const QString &content,
                            MessageDirection direction, const QString &messageType,
                            const QString &attachmentPath = QString());

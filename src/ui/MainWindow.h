@@ -13,6 +13,8 @@ class ChatPanel;
 class PeerListModel;
 class SettingsDialog;
 class ProfileDialog;
+class RecentChatListModel;
+class QStandardItemModel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -33,6 +35,7 @@ private slots:
     void handleShareCatalog(const QString &peerId, const QList<SharedFileInfo> &files);
     void openShareCenter();
     void loadConversation(const QString &peerId, const QString &peerName);
+    void handleSidebarTabChanged(int index);
 
 private:
     void setupUi();
@@ -45,6 +48,8 @@ private:
     ChatPanel *m_chatPanel = nullptr;
     QListView *m_peerList = nullptr;
     PeerListModel *m_peerListModel = nullptr;
+    RecentChatListModel *m_recentListModel = nullptr;
+    QStandardItemModel *m_groupListModel = nullptr;
     QString m_currentPeerId;
     QPointer<SettingsDialog> m_settingsDialog;
     QPointer<ShareCenterDialog> m_shareDialog;

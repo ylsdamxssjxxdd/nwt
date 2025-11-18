@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QListView>
 #include <QPushButton>
+#include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStyle>
 #include <QToolButton>
@@ -190,28 +191,32 @@ QWidget *ContactsSidebar::buildTabBar(QWidget *parent) {
     layout->setSpacing(12);
 
     struct TabConfig {
-        QStyle::StandardPixmap icon;
+        QString label;
         QString tooltip;
     };
 
+    const QString recentLabel =
+        LanguageManager::text(LangKey::ProfileCard::RecentChats, QStringLiteral("最近聊天"));
+    const QString contactsLabel =
+        LanguageManager::text(LangKey::ProfileCard::Contacts, QStringLiteral("联系人"));
+    const QString groupsLabel =
+        LanguageManager::text(LangKey::ProfileCard::Groups, QStringLiteral("群聊"));
+
     const QVector<TabConfig> configs = {
-        {QStyle::SP_MessageBoxInformation,
-         LanguageManager::text(LangKey::ProfileCard::Contacts, QStringLiteral("我的联系人"))},
-        {QStyle::SP_FileDialogDetailedView,
-         LanguageManager::text(LangKey::ProfileCard::Groups, QStringLiteral("我的群组"))},
-        {QStyle::SP_ComputerIcon, LanguageManager::text(LangKey::ProfileCard::Org, QStringLiteral("组织架构"))},
-        {QStyle::SP_FileDialogContentsView,
-         LanguageManager::text(LangKey::ProfileCard::Collaboration, QStringLiteral("协同办公"))}
+        {recentLabel, recentLabel},
+        {contactsLabel, contactsLabel},
+        {groupsLabel, groupsLabel}
     };
 
     m_tabButtons.clear();
     for (int i = 0; i < configs.size(); ++i) {
         auto *button = new QToolButton(frame);
         button->setObjectName("tabButton");
-        button->setIcon(style()->standardIcon(configs[i].icon));
+        button->setText(configs[i].label);
         button->setCheckable(true);
         button->setAutoRaise(true);
         button->setToolTip(configs[i].tooltip);
+        button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         layout->addWidget(button);
         m_tabButtons.append(button);
 
@@ -219,7 +224,7 @@ QWidget *ContactsSidebar::buildTabBar(QWidget *parent) {
     }
 
     layout->addStretch();
-    setActiveTab(0);
+    setActiveTab(RecentTab);
 
     return frame;
 }
@@ -283,6 +288,7 @@ void ContactsSidebar::setActiveTab(int index) {
             button->setChecked(i == index);
         }
     }
+    emit tabChanged(index);
 }
 
 QString ContactsSidebar::formatSignatureText(const QString &signature) const {
