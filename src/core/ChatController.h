@@ -67,6 +67,7 @@ signals:
     void profileUpdated(const ProfileDetails &details);
 
 private:
+    QString dataDirectoryPath() const;
     QString databaseFilePath() const;
     QString legacyConfigFilePath() const;
     void loadSettings();

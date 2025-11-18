@@ -14,7 +14,6 @@
 #include <QJsonObject>
 #include <QNetworkInterface>
 #include <QSet>
-#include <QStandardPaths>
 #include <QUuid>
 #include <limits>
 
@@ -557,19 +556,24 @@ void ChatController::updateProfileDetails(const ProfileDetails &details) {
     emit preferencesChanged(m_settings);
 }
 
-QString ChatController::databaseFilePath() const {
-    QString baseDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    if (baseDir.isEmpty()) {
-        baseDir = QCoreApplication::applicationDirPath();
-    }
+QString ChatController::dataDirectoryPath() const {
+    QString baseDir = QCoreApplication::applicationDirPath();
     QDir dir(baseDir);
-    dir.mkpath(QStringLiteral("."));
-    return dir.filePath(QStringLiteral("lan_chat_data.sqlite"));
+    const QString dataFolder = QStringLiteral("NWT_DATA");
+    if (!dir.exists(dataFolder)) {
+        dir.mkpath(dataFolder);
+    }
+    return dir.filePath(dataFolder);
+}
+
+QString ChatController::databaseFilePath() const {
+    const QString dataDir = dataDirectoryPath();
+    return QDir(dataDir).filePath(QStringLiteral("lan_chat_data.sqlite"));
 }
 
 QString ChatController::legacyConfigFilePath() const {
-    const QString baseDir = QCoreApplication::applicationDirPath();
-    return QDir(baseDir).filePath(QStringLiteral("lan_chat_settings.json"));
+    const QString dataDir = dataDirectoryPath();
+    return QDir(dataDir).filePath(QStringLiteral("lan_chat_settings.json"));
 }
 
 PersistedState ChatController::loadLegacyState() const {
