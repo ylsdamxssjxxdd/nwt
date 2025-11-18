@@ -3,6 +3,8 @@
 #include "DiscoveryService.h"
 #include "MessageRouter.h"
 #include "PeerDirectory.h"
+#include "StorageManager.h"
+#include "SettingsTypes.h"
 #include "ShareManager.h"
 
 #include <QHostAddress>
@@ -12,134 +14,6 @@
 #include <QPair>
 #include <QStringList>
 #include <QVector>
-
-/*!
- * \brief ���涨ɫ����Ϣ�����������峣.
- */
-struct RoleProfile {
-    QString id;
-    QString name;
-    QString signature;
-    QString avatarLetter;
-};
-
-/*!
- * \brief 个人资料信息。
- */
-struct ProfileDetails {
-    QString name;
-    QString signature;
-    QString gender;
-    QString unit = QStringLiteral(u"生物研究院");
-    QString department = QStringLiteral(u"神经网络研究室");
-    QString phone;
-    QString mobile;
-    QString email;
-    QString version;
-    QString ip;
-};
-
-/*!
- * \brief ������ͨ�������������õ���һ��������
- */
-struct GeneralSettings {
-    bool autoStart = false;
-    bool enableLanUpdate = true;
-    bool rejectShake = false;
-    bool rejectFeigeAds = false;
-    bool enableFeigeGroup = true;
-    bool autoMinimize = false;
-    bool hideIpAddress = false;
-    bool rejectSegmentShare = false;
-    bool enableAutoGroup = true;
-    bool enableAutoSubGroup = false;
-    bool popupOnMessage = false;
-    bool flashOnMessage = true;
-    QString closeBehavior = QStringLiteral("taskbar");
-    QString friendDisplay = QStringLiteral("signature");
-};
-
-/*!
- * \brief �����������.
- */
-struct NetworkSettings {
-    quint16 searchPort = 9011;
-    QString organizationCode;
-    bool enableInterop = false;
-    quint16 interopPort = 2425;
-    bool bindNetworkInterface = false;
-    QString boundInterfaceId;
-    bool restrictToListedSubnets = false;
-    bool autoRefresh = true;
-    int refreshIntervalMinutes = 5;
-};
-
-/*!
- * \brief ֪ͨ���ù���.
- */
-struct NotificationSettings {
-    bool notifySelfOnline = false;
-    bool notifyPeerOnline = false;
-    bool notifyIncomingMessage = true;
-    bool notifyFileTransfer = true;
-    bool notifyMailChange = false;
-    bool muteAll = false;
-    bool playGroupSound = false;
-};
-
-/*!
- * \brief ���������á�
- */
-struct HotkeySettings {
-    bool toggleMainWindow = true;
-    QString toggleShortcut = QStringLiteral("Ctrl + I");
-    bool captureEnabled = true;
-    QString captureShortcut = QStringLiteral("Ctrl + Alt + X");
-    bool lockEnabled = true;
-    QString lockShortcut = QStringLiteral("Ctrl + L");
-    bool openStorageEnabled = true;
-    QString openStorageShortcut = QStringLiteral("Ctrl + R");
-};
-
-/*!
- * \brief �ð�ȫ����.
- */
-struct SecuritySettings {
-    enum IdleAction { SwitchAway, LockApplication };
-
-    bool lockEnabled = false;
-    QString passwordHash;
-    int idleMinutes = 5;
-    IdleAction idleAction = SwitchAway;
-};
-
-/*!
- * \brief �ʼ����á�
- */
-struct MailSettings {
-    QString address;
-    QString imapServer;
-    QString smtpServer;
-    int port = 465;
-    bool playSoundOnMail = false;
-    bool popupOnMail = false;
-};
-
-/*!
- * \brief ȫ�����������õ�һ����������.
- */
-struct AppSettings {
-    GeneralSettings general;
-    NetworkSettings network;
-    NotificationSettings notifications;
-    HotkeySettings hotkeys;
-    SecuritySettings security;
-    MailSettings mail;
-    QStringList sharedDirectories;
-    QString activeRoleId;
-    QString signatureText;
-    ProfileDetails profile;
-};
 
 class ChatController : public QObject {
     Q_OBJECT
@@ -193,8 +67,13 @@ signals:
     void profileUpdated(const ProfileDetails &details);
 
 private:
-    QString configFilePath() const;
+    QString databaseFilePath() const;
+    QString legacyConfigFilePath() const;
     void loadSettings();
+    PersistedState loadLegacyState() const;
+    void recordChatHistory(const QString &peerId, const QString &roleName, const QString &content,
+                           MessageDirection direction, const QString &messageType,
+                           const QString &attachmentPath = QString());
     void persistSettings();
     PeerInfo findPeer(const QString &peerId) const;
     void initializeRoles();
@@ -205,9 +84,9 @@ private:
     void sendShareCatalogToPeer(const PeerInfo &peer);
     void handleShareRequest(const PeerInfo &peer, const QJsonObject &payload);
     void handleShareDownload(const PeerInfo &peer, const QJsonObject &payload);
-    ProfileDetails parseProfileObject(const QJsonObject &object) const;
+    ProfileDetails parseProfileObject(const QJsonObject &object, const QString &nameFallback,
+                                      const QString &signatureFallback) const;
     QJsonObject profileToJson(const ProfileDetails &details) const;
-
     PeerDirectory m_peerDirectory;
     DiscoveryService m_discovery;
     MessageRouter m_router;
@@ -219,5 +98,7 @@ private:
     AppSettings m_settings;
     QVector<RoleProfile> m_roles;
     ShareManager m_shareManager;
+    StorageManager m_storage;
+    bool m_storageReady = false;
     bool m_hasStoredRole = false;
 };

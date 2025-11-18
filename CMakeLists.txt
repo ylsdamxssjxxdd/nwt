@@ -8,7 +8,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5 5.15 REQUIRED COMPONENTS Core Widgets Network)
+find_package(Qt5 5.15 REQUIRED COMPONENTS Core Widgets Network Sql)
 
 set(SOURCES
     src/main.cpp
@@ -18,6 +18,8 @@ set(SOURCES
     src/core/ShareManager.cpp
     src/core/ChatController.cpp
     src/core/LanguageManager.cpp
+    src/core/SettingsTypes.h
+    src/core/StorageManager.cpp
     src/ui/MainWindow.cpp
     src/ui/SettingsDialog.cpp
     src/ui/ShareCenterDialog.cpp
@@ -35,4 +37,4 @@ add_executable(nwt ${SOURCES})
 
 target_include_directories(nwt PRIVATE src src/core src/ui)
 
-target_link_libraries(nwt PRIVATE Qt5::Core Qt5::Widgets Qt5::Network)
+target_link_libraries(nwt PRIVATE Qt5::Core Qt5::Widgets Qt5::Network Qt5::Sql)
