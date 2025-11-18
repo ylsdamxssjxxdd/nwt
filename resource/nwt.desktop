@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=NWT
+Name[zh_CN]=NWT 局域网聊天
+Comment=Local network chat and file sharing client
+Comment[zh_CN]=局域网聊天与文件共享客户端
+Exec=nwt
+Icon=nwt
+Terminal=false
+Categories=Network;Chat;Qt;
+
