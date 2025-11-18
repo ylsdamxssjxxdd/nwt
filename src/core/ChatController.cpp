@@ -13,6 +13,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkInterface>
+#include <QHostInfo>
 #include <QSet>
 #include <QUuid>
 #include <limits>
@@ -657,7 +658,8 @@ void ChatController::loadSettings() {
         m_localId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     }
     if (m_displayName.isEmpty()) {
-        m_displayName = QStringLiteral("EVA-0");
+        const QString host = QHostInfo::localHostName();
+        m_displayName = host.isEmpty() ? QStringLiteral("EVA-0") : host;
     }
     if (m_settings.signatureText.isEmpty()) {
         m_settings.signatureText = QStringLiteral("编辑个性签名");
