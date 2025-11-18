@@ -24,6 +24,9 @@
 #include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QSet>
+#include <QStringList>
+#include <algorithm>
 
 namespace {
 QVBoxLayout *sectionLayout(QFrame *section) {
@@ -46,6 +49,9 @@ QHostAddress normalizeNetwork(const QHostAddress &address, int prefixLength) {
 QString subnetDisplay(const QPair<QHostAddress, int> &pair) {
     return QStringLiteral("%1/%2").arg(pair.first.toString()).arg(pair.second);
 }
+
+constexpr int RoleToken = Qt::UserRole;
+constexpr int RoleRemovable = Qt::UserRole + 1;
 } // namespace
 
 SettingsDialog::SettingsDialog(ChatController *controller, QWidget *parent)
@@ -334,6 +340,12 @@ QWidget *SettingsDialog::createNetworkPage() {
     segmentIntro->setWordWrap(true);
     segmentLayout->addWidget(segmentIntro);
 
+    auto *currentSubnetLabel = new QLabel(segmentSection);
+    currentSubnetLabel->setObjectName(QStringLiteral("net_segmentCurrent"));
+    currentSubnetLabel->setWordWrap(true);
+    currentSubnetLabel->setText(detectedSubnetHint());
+    segmentLayout->addWidget(currentSubnetLabel);
+
     auto *segmentRow = new QHBoxLayout();
     m_subnetInput = new QLineEdit(segmentSection);
     m_subnetInput->setObjectName(QStringLiteral("net_segmentInput"));
@@ -365,11 +377,13 @@ QWidget *SettingsDialog::createNetworkPage() {
 
     connect(addButton, &QPushButton::clicked, this, &SettingsDialog::handleSubnetAdd);
     connect(m_removeSubnetButton, &QPushButton::clicked, this, &SettingsDialog::handleSubnetRemove);
-    connect(m_subnetList, &QListWidget::currentRowChanged, this, [this](int row) {
-        if (m_removeSubnetButton) {
-            m_removeSubnetButton->setEnabled(row >= 0);
-        }
-    });
+    connect(m_subnetList, &QListWidget::currentItemChanged, this,
+            [this](QListWidgetItem *current) {
+                if (m_removeSubnetButton) {
+                    const bool removable = current && current->data(RoleRemovable).toBool();
+                    m_removeSubnetButton->setEnabled(removable);
+                }
+            });
 
     auto *blockSection = createSection(tr("网段黑名单"));
     auto *blockLayout = sectionLayout(blockSection);
@@ -939,26 +953,60 @@ void SettingsDialog::refreshSubnetList() {
     if (!m_controller || !m_subnetList) {
         return;
     }
-    const int previousRow = m_subnetList->currentRow();
+    const QString previousToken = m_subnetList->currentItem()
+        ? m_subnetList->currentItem()->data(RoleToken).toString()
+        : QString();
     m_cachedSubnets = m_controller->configuredSubnets();
+    const auto locals = detectLocalSubnets();
+    QSet<QString> addedTokens;
+
     m_subnetList->clear();
-    for (const auto &pair : std::as_const(m_cachedSubnets)) {
-        m_subnetList->addItem(subnetDisplay(pair));
+
+    auto addItem = [this, &addedTokens](const QPair<QHostAddress, int> &pair, bool removable, bool isLocal) {
+        const QString token = subnetDisplay(pair);
+        QString text = token;
+        if (isLocal) {
+            text = tr("%1（当前网段）").arg(token);
+        }
+        auto *item = new QListWidgetItem(text, m_subnetList);
+        item->setData(RoleToken, token);
+        item->setData(RoleRemovable, removable);
+        addedTokens.insert(token);
+    };
+
+    for (const auto &pair : locals) {
+        addItem(pair, false, true);
     }
+
+    for (const auto &pair : std::as_const(m_cachedSubnets)) {
+        const QString token = subnetDisplay(pair);
+        if (addedTokens.contains(token)) {
+            continue;
+        }
+        addItem(pair, true, false);
+    }
+
     if (m_subnetList->count() == 0) {
         if (m_removeSubnetButton) {
             m_removeSubnetButton->setEnabled(false);
         }
         return;
     }
-    int targetRow = previousRow;
-    if (targetRow >= m_subnetList->count()) {
-        targetRow = m_subnetList->count() - 1;
+
+    bool restored = false;
+    if (!previousToken.isEmpty()) {
+        for (int i = 0; i < m_subnetList->count(); ++i) {
+            auto *item = m_subnetList->item(i);
+            if (item->data(RoleToken).toString() == previousToken) {
+                m_subnetList->setCurrentRow(i);
+                restored = true;
+                break;
+            }
+        }
     }
-    if (targetRow < 0) {
-        targetRow = 0;
+    if (!restored) {
+        m_subnetList->setCurrentRow(0);
     }
-    m_subnetList->setCurrentRow(targetRow);
 }
 
 void SettingsDialog::handleSubnetAdd() {
@@ -989,12 +1037,27 @@ void SettingsDialog::handleSubnetRemove() {
     if (!m_controller || !m_subnetList) {
         return;
     }
-    const int row = m_subnetList->currentRow();
-    if (row < 0 || row >= m_cachedSubnets.size()) {
+    QListWidgetItem *currentItem = m_subnetList->currentItem();
+    if (!currentItem) {
+        return;
+    }
+    if (!currentItem->data(RoleRemovable).toBool()) {
+        QMessageBox::warning(this, tr("网段设置"), tr("当前网段用于持续维护联机状态，无法移除。"));
+        return;
+    }
+    const QString token = currentItem->data(RoleToken).toString();
+    int targetIndex = -1;
+    for (int i = 0; i < m_cachedSubnets.size(); ++i) {
+        if (subnetDisplay(m_cachedSubnets.at(i)) == token) {
+            targetIndex = i;
+            break;
+        }
+    }
+    if (targetIndex < 0) {
         return;
     }
     auto next = m_cachedSubnets;
-    next.removeAt(row);
+    next.removeAt(targetIndex);
     m_controller->setSubnets(next);
     refreshSubnetList();
 }
@@ -1095,6 +1158,54 @@ bool SettingsDialog::parseSubnetInput(const QString &text, QHostAddress &network
     network = normalizeNetwork(candidate, prefix);
     prefixLength = prefix;
     return true;
+}
+
+QList<QPair<QHostAddress, int>> SettingsDialog::detectLocalSubnets() const {
+    QList<QPair<QHostAddress, int>> ranges;
+    QSet<QString> seen;
+    const auto interfaces = QNetworkInterface::allInterfaces();
+    for (const QNetworkInterface &iface : interfaces) {
+        const auto flags = iface.flags();
+        if (!flags.testFlag(QNetworkInterface::IsUp) || !flags.testFlag(QNetworkInterface::IsRunning) ||
+            flags.testFlag(QNetworkInterface::IsLoopBack)) {
+            continue;
+        }
+        for (const QNetworkAddressEntry &entry : iface.addressEntries()) {
+            const QHostAddress ip = entry.ip();
+            const QHostAddress mask = entry.netmask();
+            if (ip.protocol() != QAbstractSocket::IPv4Protocol || mask.protocol() != QAbstractSocket::IPv4Protocol) {
+                continue;
+            }
+            const quint32 networkValue = ip.toIPv4Address() & mask.toIPv4Address();
+            quint32 maskValue = mask.toIPv4Address();
+            int prefix = 0;
+            while (maskValue & 0x80000000u) {
+                ++prefix;
+                maskValue <<= 1;
+            }
+            const QHostAddress network(networkValue);
+            const QString token = QStringLiteral("%1/%2").arg(network.toString()).arg(prefix);
+            if (seen.contains(token) || prefix <= 0) {
+                continue;
+            }
+            seen.insert(token);
+            ranges.append(qMakePair(network, prefix));
+        }
+    }
+    return ranges;
+}
+
+QString SettingsDialog::detectedSubnetHint() const {
+    const auto subnets = detectLocalSubnets();
+    if (subnets.isEmpty()) {
+        return tr("当前未检测到可用的 IPv4 网段，请确认网络连接正常后再试。");
+    }
+    QStringList tokens;
+    tokens.reserve(subnets.size());
+    for (const auto &pair : subnets) {
+        tokens.append(subnetDisplay(pair));
+    }
+    return tr("当前检测到的网段：%1").arg(tokens.join(QStringLiteral("、")));
 }
 
 void SettingsDialog::bindNotificationSettings(QWidget *section) {

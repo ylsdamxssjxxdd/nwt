@@ -54,6 +54,8 @@ private:
     void handleBlockedAdd();
     void handleBlockedRemove();
     bool parseSubnetInput(const QString &text, QHostAddress &network, int &prefixLength) const;
+    QList<QPair<QHostAddress, int>> detectLocalSubnets() const;
+    QString detectedSubnetHint() const;
 
     QPointer<ChatController> m_controller;
     QButtonGroup *m_navGroup = nullptr;

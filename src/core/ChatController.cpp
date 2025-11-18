@@ -12,6 +12,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkInterface>
 #include <QSet>
 #include <QStandardPaths>
 #include <QUuid>
@@ -41,6 +42,24 @@ QHostAddress normalizeNetwork(const QHostAddress &address, int prefixLength) {
 
 QString subnetToken(const QHostAddress &network, int prefixLength) {
     return QStringLiteral("%1/%2").arg(network.toString()).arg(prefixLength);
+}
+
+QString detectLocalIpv4() {
+    const auto interfaces = QNetworkInterface::allInterfaces();
+    for (const QNetworkInterface &iface : interfaces) {
+        const auto flags = iface.flags();
+        if (!flags.testFlag(QNetworkInterface::IsUp) || !flags.testFlag(QNetworkInterface::IsRunning) ||
+            flags.testFlag(QNetworkInterface::IsLoopBack)) {
+            continue;
+        }
+        for (const QNetworkAddressEntry &entry : iface.addressEntries()) {
+            const QHostAddress ip = entry.ip();
+            if (ip.protocol() == QAbstractSocket::IPv4Protocol) {
+                return ip.toString();
+            }
+        }
+    }
+    return {};
 }
 
 GeneralSettings parseGeneral(const QJsonObject &object) {
@@ -652,7 +671,8 @@ void ChatController::loadSettings() {
         }
     }
     if (m_settings.profile.ip.isEmpty()) {
-        m_settings.profile.ip = QStringLiteral("192.168.0.2");
+        const QString detectedIp = detectLocalIpv4();
+        m_settings.profile.ip = detectedIp.isEmpty() ? QStringLiteral("192.168.xx.xx") : detectedIp;
     }
     if (m_settings.profile.unit.isEmpty()) {
         m_settings.profile.unit = QStringLiteral("生物研究院");
