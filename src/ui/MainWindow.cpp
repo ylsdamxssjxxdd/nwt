@@ -7,12 +7,14 @@
 #include "SettingsDialog.h"
 #include "core/LanguageKeys.h"
 #include "core/LanguageManager.h"
+#include "core/StorageManager.h"
 
 #include <QDateTime>
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include <QItemSelectionModel>
 #include <QListView>
+#include <algorithm>
 
 MainWindow::MainWindow(ChatController *controller, QWidget *parent)
     : QMainWindow(parent), m_controller(controller) {
@@ -99,6 +101,38 @@ void MainWindow::updateChatHeader(const QString &displayName) {
     }
 }
 
+void MainWindow::loadConversation(const QString &peerId, const QString &peerName) {
+    if (!m_chatPanel) {
+        return;
+    }
+    m_chatPanel->resetConversation();
+    if (!m_controller || peerId.isEmpty()) {
+        return;
+    }
+    const auto history = m_controller->recentMessages(peerId, 200);
+    if (history.isEmpty()) {
+        return;
+    }
+    const QString peerLabel = peerName.isEmpty() ? peerId : peerName;
+    const ProfileDetails profile = m_controller->profileDetails();
+    const QString localLabel = profile.name.isEmpty() ? m_controller->localDisplayName() : profile.name;
+    for (int i = history.size() - 1; i >= 0; --i) {
+        const StoredMessage &msg = history.at(i);
+        const QDateTime time = QDateTime::fromSecsSinceEpoch(msg.timestamp).toLocalTime();
+        const QString timeText = time.toString(QStringLiteral("HH:mm:ss"));
+        const QString speaker = msg.roleName.isEmpty()
+                                    ? (msg.direction == MessageDirection::Outgoing ? localLabel : peerLabel)
+                                    : msg.roleName;
+        const QString content = msg.content;
+        m_chatPanel->appendTimelineHint(timeText, QString());
+        if (msg.direction == MessageDirection::Outgoing) {
+            m_chatPanel->appendOutgoingMessage(timeText, speaker, content);
+        } else {
+            m_chatPanel->appendIncomingMessage(timeText, speaker, content);
+        }
+    }
+}
+
 void MainWindow::handleSend() {
     if (!m_controller || !m_chatPanel) {
         return;
@@ -152,6 +186,7 @@ void MainWindow::handlePeerSelection(const QModelIndex &index) {
     showStatus(
         LanguageManager::text(LangKey::MainWindow::FileSelected, QStringLiteral("已选中 %1")).arg(display));
     updateChatHeader(display);
+    loadConversation(m_currentPeerId, display);
     if (m_shareDialog) {
         m_shareDialog->setPeerId(m_currentPeerId);
         m_shareDialog->setRemoteEntries(m_remoteShares.value(m_currentPeerId));

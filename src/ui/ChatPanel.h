@@ -21,6 +21,7 @@ public:
     explicit ChatPanel(QWidget *parent = nullptr);
 
     void setChatHeader(const QString &title, const QString &presence);
+    void resetConversation();
     void appendOutgoingMessage(const QString &timestamp, const QString &sender, const QString &text);
     void appendIncomingMessage(const QString &timestamp, const QString &sender, const QString &text);
     void appendTimelineHint(const QString &timestamp, const QString &tag);

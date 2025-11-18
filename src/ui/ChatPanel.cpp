@@ -206,6 +206,31 @@ void ChatPanel::setChatHeader(const QString &title, const QString &presence) {
     }
 }
 
+void ChatPanel::resetConversation() {
+    if (!m_messageLayout) {
+        return;
+    }
+    while (m_messageLayout->count() > 0) {
+        if (auto *item = m_messageLayout->takeAt(0)) {
+            if (auto *widget = item->widget()) {
+                widget->deleteLater();
+            }
+            delete item;
+        }
+    }
+    if (m_chatEmptyLabel) {
+        m_chatEmptyLabel->deleteLater();
+    }
+    m_chatEmptyLabel =
+        new QLabel(LanguageManager::text(LangKey::Chat::EmptyHint, QStringLiteral("ѡ����ϵ�˺󼴿ɿ�ʼ�Ի�")),
+                   m_messageViewport);
+    m_chatEmptyLabel->setObjectName("chatEmpty");
+    m_chatEmptyLabel->setAlignment(Qt::AlignCenter);
+    m_chatEmptyLabel->setWordWrap(true);
+    m_messageLayout->addWidget(m_chatEmptyLabel, 0, Qt::AlignCenter);
+    m_messageLayout->addStretch(1);
+}
+
 void ChatPanel::appendOutgoingMessage(const QString &timestamp, const QString &sender, const QString &text) {
     appendChatBubble(timestamp, sender, text, true);
 }

@@ -32,6 +32,7 @@ private slots:
                             const QString &path);
     void handleShareCatalog(const QString &peerId, const QList<SharedFileInfo> &files);
     void openShareCenter();
+    void loadConversation(const QString &peerId, const QString &peerName);
 
 private:
     void setupUi();

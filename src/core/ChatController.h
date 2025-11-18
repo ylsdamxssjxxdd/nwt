@@ -35,6 +35,7 @@ public:
     bool hasActiveRole() const;
     bool requiresRoleSelection() const { return !m_hasStoredRole; }
     ProfileDetails profileDetails() const;
+    QVector<StoredMessage> recentMessages(const QString &peerId, int limit = 200);
 
 public slots:
     void sendMessageToPeer(const QString &peerId, const QString &text);
@@ -69,9 +70,7 @@ signals:
 private:
     QString dataDirectoryPath() const;
     QString databaseFilePath() const;
-    QString legacyConfigFilePath() const;
     void loadSettings();
-    PersistedState loadLegacyState() const;
     void recordChatHistory(const QString &peerId, const QString &roleName, const QString &content,
                            MessageDirection direction, const QString &messageType,
                            const QString &attachmentPath = QString());

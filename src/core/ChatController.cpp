@@ -10,7 +10,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkInterface>
 #include <QHostInfo>
@@ -324,6 +323,13 @@ ProfileDetails ChatController::profileDetails() const {
     return m_settings.profile;
 }
 
+QVector<StoredMessage> ChatController::recentMessages(const QString &peerId, int limit) {
+    if (!m_storageReady || peerId.isEmpty()) {
+        return {};
+    }
+    return m_storage.recentMessages(peerId, limit);
+}
+
 QVector<RoleProfile> ChatController::availableRoles() const {
     return m_roles;
 }
@@ -569,81 +575,13 @@ QString ChatController::dataDirectoryPath() const {
 
 QString ChatController::databaseFilePath() const {
     const QString dataDir = dataDirectoryPath();
-    return QDir(dataDir).filePath(QStringLiteral("lan_chat_data.sqlite"));
-}
-
-QString ChatController::legacyConfigFilePath() const {
-    const QString dataDir = dataDirectoryPath();
-    return QDir(dataDir).filePath(QStringLiteral("lan_chat_settings.json"));
-}
-
-PersistedState ChatController::loadLegacyState() const {
-    PersistedState state;
-    QFile file(legacyConfigFilePath());
-    if (file.exists() && file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        const QJsonObject root = doc.object();
-        const QJsonObject identity = root.value(QStringLiteral("identity")).toObject();
-        const QJsonObject network = root.value(QStringLiteral("network")).toObject();
-        const QJsonObject preferences = root.value(QStringLiteral("preferences")).toObject();
-
-        state.localId = identity.value(QStringLiteral("id")).toString();
-        state.displayName = identity.value(QStringLiteral("name")).toString();
-        const int portValue = network.value(QStringLiteral("listenPort")).toInt(state.listenPort);
-        if (portValue > 0 && portValue <= std::numeric_limits<quint16>::max()) {
-            state.listenPort = static_cast<quint16>(portValue);
-        }
-
-        const QJsonArray subnetArray = network.value(QStringLiteral("subnets")).toArray();
-        for (const QJsonValue &value : subnetArray) {
-            const QJsonObject entry = value.toObject();
-            QHostAddress addr(entry.value(QStringLiteral("network")).toString());
-            const int prefix = entry.value(QStringLiteral("prefix")).toInt(-1);
-            if (!addr.isNull() && prefix >= 0 && prefix <= maxPrefixFor(addr)) {
-                state.subnets.append(qMakePair(normalizeNetwork(addr, prefix), prefix));
-            }
-        }
-        const QJsonArray blockedArray = network.value(QStringLiteral("blockedSubnets")).toArray();
-        for (const QJsonValue &value : blockedArray) {
-            const QJsonObject entry = value.toObject();
-            QHostAddress addr(entry.value(QStringLiteral("network")).toString());
-            const int prefix = entry.value(QStringLiteral("prefix")).toInt(-1);
-            if (!addr.isNull() && prefix >= 0 && prefix <= maxPrefixFor(addr)) {
-                state.blockedSubnets.append(qMakePair(normalizeNetwork(addr, prefix), prefix));
-            }
-        }
-
-        state.settings.general = parseGeneral(preferences.value(QStringLiteral("general")).toObject());
-        state.settings.network = parseNetworkSettings(preferences.value(QStringLiteral("networkPrefs")).toObject());
-        state.settings.notifications =
-            parseNotificationSettings(preferences.value(QStringLiteral("notifications")).toObject());
-        state.settings.hotkeys = parseHotkeySettings(preferences.value(QStringLiteral("hotkeys")).toObject());
-        state.settings.security = parseSecuritySettings(preferences.value(QStringLiteral("security")).toObject());
-        state.settings.mail = parseMailSettings(preferences.value(QStringLiteral("mail")).toObject());
-        state.settings.sharedDirectories =
-            parseStringList(preferences.value(QStringLiteral("sharedFolders")).toArray());
-        state.settings.activeRoleId = preferences.value(QStringLiteral("activeRoleId")).toString();
-        state.settings.signatureText =
-            preferences.value(QStringLiteral("signature")).toString(QStringLiteral("编辑个性签名"));
-        const QString profileNameFallback =
-            state.displayName.isEmpty() ? state.localId : state.displayName;
-        state.settings.profile = parseProfileObject(preferences.value(QStringLiteral("profile")).toObject(),
-                                                    profileNameFallback, state.settings.signatureText);
-    }
-    return state;
+    return QDir(dataDir).filePath(QStringLiteral("nwt.db"));
 }
 
 void ChatController::loadSettings() {
     PersistedState state;
-    bool hasStoredState = false;
-    bool migratedFromLegacy = false;
     if (m_storageReady) {
         state = m_storage.loadState();
-        hasStoredState = !state.localId.isEmpty();
-    }
-    if (!hasStoredState) {
-        state = loadLegacyState();
-        migratedFromLegacy = !state.localId.isEmpty();
     }
 
     m_localId = state.localId;
@@ -688,9 +626,6 @@ void ChatController::loadSettings() {
     }
     m_displayName = m_settings.profile.name;
     m_shareManager.collectLocalShares(m_settings.sharedDirectories);
-    if (migratedFromLegacy && m_storageReady) {
-        persistSettings();
-    }
 }
 
 void ChatController::recordChatHistory(const QString &peerId, const QString &roleName, const QString &content,
@@ -711,74 +646,17 @@ void ChatController::recordChatHistory(const QString &peerId, const QString &rol
 }
 
 void ChatController::persistSettings() {
-    if (m_storageReady) {
-        PersistedState state;
-        state.localId = m_localId;
-        state.displayName = m_displayName;
-        state.listenPort = m_listenPort;
-        state.subnets = m_subnets;
-        state.blockedSubnets = m_blockedSubnets;
-        state.settings = m_settings;
-        m_storage.saveState(state);
+    if (!m_storageReady) {
         return;
     }
-
-    QFile file(legacyConfigFilePath());
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        emit controllerWarning(
-            LanguageManager::text(LangKey::Controller::CannotWriteConfig, QStringLiteral("无法写入配置: %1"))
-                .arg(file.errorString()));
-        return;
-    }
-
-    QJsonObject identity{
-        {QStringLiteral("id"), m_localId},
-        {QStringLiteral("name"), m_displayName}
-    };
-
-    QJsonArray subnetArray;
-    for (const auto &pair : std::as_const(m_subnets)) {
-        subnetArray.append(QJsonObject{
-            {QStringLiteral("network"), pair.first.toString()},
-            {QStringLiteral("prefix"), pair.second}
-        });
-    }
-    QJsonArray blockedArray;
-    for (const auto &pair : std::as_const(m_blockedSubnets)) {
-        blockedArray.append(QJsonObject{
-            {QStringLiteral("network"), pair.first.toString()},
-            {QStringLiteral("prefix"), pair.second}
-        });
-    }
-
-    QJsonObject network{
-        {QStringLiteral("listenPort"), static_cast<int>(m_listenPort)},
-        {QStringLiteral("subnets"), subnetArray},
-        {QStringLiteral("blockedSubnets"), blockedArray}
-    };
-
-    QJsonObject preferences{
-        {QStringLiteral("general"), generalToJson(m_settings.general)},
-        {QStringLiteral("networkPrefs"), networkSettingsToJson(m_settings.network)},
-        {QStringLiteral("notifications"), notificationSettingsToJson(m_settings.notifications)},
-        {QStringLiteral("hotkeys"), hotkeySettingsToJson(m_settings.hotkeys)},
-        {QStringLiteral("security"), securitySettingsToJson(m_settings.security)},
-        {QStringLiteral("mail"), mailSettingsToJson(m_settings.mail)},
-        {QStringLiteral("sharedFolders"), toJsonArray(m_settings.sharedDirectories)},
-        {QStringLiteral("activeRoleId"), m_settings.activeRoleId},
-        {QStringLiteral("signature"), m_settings.signatureText},
-        {QStringLiteral("profile"), profileToJson(m_settings.profile)}
-    };
-
-    QJsonObject root{
-        {QStringLiteral("identity"), identity},
-        {QStringLiteral("network"), network},
-        {QStringLiteral("preferences"), preferences}
-    };
-
-    const QJsonDocument doc(root);
-    file.write(doc.toJson(QJsonDocument::Indented));
-    file.close();
+    PersistedState state;
+    state.localId = m_localId;
+    state.displayName = m_displayName;
+    state.listenPort = m_listenPort;
+    state.subnets = m_subnets;
+    state.blockedSubnets = m_blockedSubnets;
+    state.settings = m_settings;
+    m_storage.saveState(state);
 }
 
 PeerInfo ChatController::findPeer(const QString &peerId) const {
