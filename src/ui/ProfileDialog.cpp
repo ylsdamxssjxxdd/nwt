@@ -1,6 +1,8 @@
 #include "ProfileDialog.h"
 #include "AvatarHelper.h"
 #include "StyleHelper.h"
+#include "core/LanguageKeys.h"
+#include "core/LanguageManager.h"
 
 #include <QFileDialog>
 #include <QFormLayout>
@@ -49,7 +51,8 @@ ProfileDialog::ProfileDialog(ChatController *controller, QWidget *parent)
     m_avatarLabel->setScaledContents(true);
     avatarLayout->addWidget(m_avatarLabel, 0, Qt::AlignLeft | Qt::AlignTop);
 
-    m_avatarEditButton = new QPushButton(tr("����ͷ��"), headerWidget);
+    m_avatarEditButton = new QPushButton(
+        LanguageManager::text(LangKey::ProfileDialog::ChangeAvatar, QStringLiteral(u"更换头像")), headerWidget);
     m_avatarEditButton->setObjectName("avatarEditButton");
     m_avatarEditButton->setCursor(Qt::PointingHandCursor);
     m_avatarEditButton->setEnabled(false);
@@ -153,7 +156,8 @@ void ProfileDialog::selectAvatarImage() {
         return;
     }
     const QString filePath = QFileDialog::getOpenFileName(
-        this, tr("ѡ��ͷ��ͼƬ"), QString(), tr("ͼƬ�ļ� (*.png *.jpg *.jpeg *.bmp)"));
+        this, LanguageManager::text(LangKey::ProfileDialog::SelectAvatar, QStringLiteral(u"选择头像图片")), QString(),
+        LanguageManager::text(LangKey::ProfileDialog::ImageFilter, QStringLiteral(u"图像文件 (*.png *.jpg *.jpeg *.bmp)")));
     if (filePath.isEmpty()) {
         return;
     }

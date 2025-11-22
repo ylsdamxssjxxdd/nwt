@@ -35,7 +35,7 @@ QColor toneColor(GenderTone tone) {
         return QColor(QStringLiteral("#4a90e2"));
     case GenderTone::Neutral:
     default:
-        return QColor(QStringLiteral("#7f8aa5"));
+        return QColor(QStringLiteral("#4a90e2"));
     }
 }
 
@@ -48,6 +48,16 @@ QString normalizeInitial(const QString &name) {
     return first.isEmpty() ? QStringLiteral("E") : first;
 }
 
+QColor accentShadowColor() {
+    return QColor(8, 19, 54, 35);
+}
+
+QPainterPath roundedPath(const QRectF &rect, qreal radius) {
+    QPainterPath path;
+    path.addRoundedRect(rect, radius, radius);
+    return path;
+}
+
 QPixmap renderImageAvatar(const QString &path, int size) {
     QPixmap pixmap(size, size);
     pixmap.fill(Qt::transparent);
@@ -58,18 +68,27 @@ QPixmap renderImageAvatar(const QString &path, int size) {
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-    QPainterPath clipPath;
-    clipPath.addEllipse(QRectF(0, 0, size, size));
+
+    const qreal inset = size * 0.08;
+    const QRectF frame = QRectF(inset, inset, size - inset * 2, size - inset * 2);
+    const qreal radius = frame.width() * 0.28;
+
+    painter.fillPath(roundedPath(frame.translated(0, 2), radius), accentShadowColor());
+
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::NoBrush);
+    const QPainterPath clipPath = roundedPath(frame, radius);
     painter.setClipPath(clipPath);
     const QImage scaled =
-        image.scaled(size, size, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-    painter.drawImage(QRectF(0, 0, size, size), scaled);
+        image.scaled(frame.size().toSize(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+    painter.drawImage(frame, scaled);
     painter.setClipping(false);
+
     QPen pen(QColor(255, 255, 255, 220));
     pen.setWidthF(2.0);
     painter.setPen(pen);
     painter.setBrush(Qt::NoBrush);
-    painter.drawEllipse(QRectF(1, 1, size - 2, size - 2));
+    painter.drawRoundedRect(frame, radius, radius);
     return pixmap;
 }
 } // namespace
@@ -96,17 +115,29 @@ QPixmap createAvatarPixmap(const AvatarDescriptor &descriptor, int size) {
     pixmap.fill(Qt::transparent);
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, true);
-    const QRectF rect(0, 0, finalSize, finalSize);
+    painter.setRenderHint(QPainter::TextAntialiasing, true);
+
+    const qreal inset = finalSize * 0.08;
+    const QRectF frame = QRectF(inset, inset, finalSize - inset * 2, finalSize - inset * 2);
+    const qreal radius = frame.width() * 0.28;
     const QColor background = toneColor(detectGenderTone(descriptor.gender));
+
+    painter.fillPath(roundedPath(frame.translated(0, 2), radius), accentShadowColor());
     painter.setPen(Qt::NoPen);
     painter.setBrush(background);
-    painter.drawEllipse(rect);
+    painter.drawRoundedRect(frame, radius, radius);
 
-    painter.setPen(Qt::white);
-    QFont font(QStringLiteral("Microsoft YaHei"), finalSize / 2.2);
+    painter.setPen(QColor(255, 255, 255, 245));
+    QFont font(QStringLiteral("Microsoft YaHei"), finalSize / 2.4);
     font.setBold(true);
     painter.setFont(font);
-    painter.drawText(rect, Qt::AlignCenter, normalizeInitial(descriptor.displayName));
+    painter.drawText(frame, Qt::AlignCenter, normalizeInitial(descriptor.displayName));
+
+    QPen pen(QColor(255, 255, 255, 220));
+    pen.setWidthF(2.0);
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRoundedRect(frame, radius, radius);
     return pixmap;
 }
 } // namespace AvatarHelper

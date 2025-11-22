@@ -1,5 +1,6 @@
 #include "ContactsSidebar.h"
 
+#include "AvatarHelper.h"
 #include "StyleHelper.h"
 #include "core/LanguageKeys.h"
 #include "core/LanguageManager.h"
@@ -69,7 +70,10 @@ void ContactsSidebar::setAvatarPixmap(const QPixmap &pixmap) {
         return;
     }
     m_avatarLabel->setIcon(QIcon(pixmap));
-    m_avatarLabel->setIconSize(pixmap.size());
+    const int inset = qMax(6, pixmap.width() / 8);
+    const QSize iconSize =
+        QSize(qMax(16, pixmap.width() - inset), qMax(16, pixmap.height() - inset));
+    m_avatarLabel->setIconSize(iconSize);
     m_avatarLabel->setText(QString());
 }
 
@@ -92,10 +96,14 @@ QWidget *ContactsSidebar::buildProfileCard(QWidget *parent) {
     m_avatarLabel = new QPushButton(frame);
     m_avatarLabel->setObjectName("avatarLabel");
     m_avatarLabel->setFixedSize(88, 88);
-    m_avatarLabel->setIconSize(QSize(88, 88));
+    m_avatarLabel->setIconSize(QSize(76, 76));
     m_avatarLabel->setFlat(true);
     m_avatarLabel->setFocusPolicy(Qt::NoFocus);
     m_avatarLabel->setCursor(Qt::PointingHandCursor);
+    AvatarHelper::AvatarDescriptor defaultDesc;
+    defaultDesc.displayName =
+        LanguageManager::text(LangKey::ProfileCard::DefaultInitial, QStringLiteral("E"));
+    setAvatarPixmap(AvatarHelper::createAvatarPixmap(defaultDesc, 88));
     layout->addWidget(m_avatarLabel);
     layout->setAlignment(m_avatarLabel, Qt::AlignTop);
 

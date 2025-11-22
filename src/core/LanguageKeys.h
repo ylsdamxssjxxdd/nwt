@@ -57,4 +57,10 @@ constexpr int CannotSaveFile = 31007;
 constexpr int FileSaved = 31008;
 constexpr int ShareMissing = 31009;
 } // namespace Controller
+
+namespace ProfileDialog {
+constexpr int ChangeAvatar = 32001;
+constexpr int SelectAvatar = 32002;
+constexpr int ImageFilter = 32003;
+} // namespace ProfileDialog
 } // namespace LangKey
