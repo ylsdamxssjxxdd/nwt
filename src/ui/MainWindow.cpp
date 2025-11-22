@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 
+#include "AvatarHelper.h"
 #include "ChatPanel.h"
 #include "ContactsSidebar.h"
 #include "PeerListModel.h"
@@ -123,13 +124,20 @@ void MainWindow::refreshProfileCard() {
     if (!m_controller || !m_contactsSidebar) {
         return;
     }
-    const ProfileDetails profile = m_controller->profileDetails();
+    ProfileDetails profile = m_controller->profileDetails();
     const QString displayName = profile.name.isEmpty() ? m_controller->localDisplayName() : profile.name;
     const QString signature = profile.signature.isEmpty()
-                                  ? LanguageManager::text(LangKey::ProfileCard::EditSignature, QStringLiteral("编辑我的签名"))
+                                  ? LanguageManager::text(LangKey::ProfileCard::EditSignature, QStringLiteral("�༭�ҵ�ǩ��"))
                                   : profile.signature;
     m_contactsSidebar->setProfileInfo(displayName, signature);
-    m_contactsSidebar->setAvatarLetter(displayName.left(1));
+    if (profile.name.isEmpty()) {
+        profile.name = displayName;
+    }
+    const auto descriptor = AvatarHelper::descriptorFromProfile(profile);
+    m_contactsSidebar->setAvatarPixmap(AvatarHelper::createAvatarPixmap(descriptor, 88));
+    if (m_chatPanel) {
+        m_chatPanel->setLocalProfile(profile);
+    }
 }
 
 void MainWindow::updateChatHeader(const QString &displayName) {

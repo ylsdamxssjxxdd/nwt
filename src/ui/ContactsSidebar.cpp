@@ -5,9 +5,11 @@
 #include "core/LanguageManager.h"
 
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListView>
+#include <QPixmap>
 #include <QPushButton>
 #include <QSizePolicy>
 #include <QStackedWidget>
@@ -58,13 +60,17 @@ void ContactsSidebar::setProfileInfo(const QString &displayName, const QString &
     }
 }
 
-void ContactsSidebar::setAvatarLetter(const QString &letter) {
-    if (m_avatarLabel) {
-        const QString resolved =
-            letter.isEmpty() ? LanguageManager::text(LangKey::ProfileCard::DefaultInitial, QStringLiteral("E"))
-                             : letter.left(1).toUpper();
-        m_avatarLabel->setText(resolved);
+void ContactsSidebar::setAvatarPixmap(const QPixmap &pixmap) {
+    if (!m_avatarLabel) {
+        return;
     }
+    if (pixmap.isNull()) {
+        m_avatarLabel->setIcon(QIcon());
+        return;
+    }
+    m_avatarLabel->setIcon(QIcon(pixmap));
+    m_avatarLabel->setIconSize(pixmap.size());
+    m_avatarLabel->setText(QString());
 }
 
 void ContactsSidebar::setPeerPlaceholderVisible(bool hasPeers) {
@@ -83,10 +89,10 @@ QWidget *ContactsSidebar::buildProfileCard(QWidget *parent) {
     layout->setContentsMargins(16, 12, 16, 12);
     layout->setSpacing(12);
 
-    m_avatarLabel = new QPushButton(
-        LanguageManager::text(LangKey::ProfileCard::DefaultInitial, QStringLiteral("E")), frame);
+    m_avatarLabel = new QPushButton(frame);
     m_avatarLabel->setObjectName("avatarLabel");
     m_avatarLabel->setFixedSize(88, 88);
+    m_avatarLabel->setIconSize(QSize(88, 88));
     m_avatarLabel->setFlat(true);
     m_avatarLabel->setFocusPolicy(Qt::NoFocus);
     m_avatarLabel->setCursor(Qt::PointingHandCursor);

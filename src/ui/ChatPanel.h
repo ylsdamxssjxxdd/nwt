@@ -1,6 +1,10 @@
 #pragma once
 
 #include <QFrame>
+#include <QHash>
+#include <QPixmap>
+
+struct ProfileDetails;
 
 class EmotionPicker;
 class AnimatedImageHandler;
@@ -21,6 +25,7 @@ public:
     explicit ChatPanel(QWidget *parent = nullptr);
 
     void setChatHeader(const QString &title, const QString &presence);
+    void setLocalProfile(const ProfileDetails &profile);
     void resetConversation();
     void appendOutgoingMessage(const QString &timestamp, const QString &sender, const QString &text);
     void appendIncomingMessage(const QString &timestamp, const QString &sender, const QString &text);
@@ -45,6 +50,7 @@ private:
     void scrollToLatestMessage() const;
     void toggleEmotionPopup();
     void insertEmotionText(const QString &tips, const QString &imageResource);
+    QPixmap resolveAvatarPixmap(const QString &sender, bool outgoing);
 
     QLabel *m_chatNameLabel = nullptr;
     QLabel *m_chatPresenceLabel = nullptr;
@@ -60,4 +66,6 @@ private:
     QToolButton *m_emotionButton = nullptr;
     EmotionPicker *m_emotionPicker = nullptr;
     AnimatedImageHandler *m_inputEmojiHandler = nullptr;
+    QPixmap m_localAvatar;
+    QHash<QString, QPixmap> m_peerAvatarCache;
 };

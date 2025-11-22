@@ -1,11 +1,14 @@
 #include "ProfileDialog.h"
+#include "AvatarHelper.h"
 #include "StyleHelper.h"
 
+#include <QFileDialog>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QVBoxLayout>
+#include <QtGlobal>
 
 namespace {
 QLabel *createFieldLabel(const QString &text, QWidget *parent) {
@@ -36,11 +39,23 @@ ProfileDialog::ProfileDialog(ChatController *controller, QWidget *parent)
     headerLayout->setHorizontalSpacing(16);
     headerLayout->setVerticalSpacing(8);
 
+    auto *avatarLayout = new QVBoxLayout();
+    avatarLayout->setContentsMargins(0, 0, 0, 0);
+    avatarLayout->setSpacing(8);
     m_avatarLabel = new QLabel(headerWidget);
     m_avatarLabel->setObjectName("profileAvatar");
     m_avatarLabel->setAlignment(Qt::AlignCenter);
     m_avatarLabel->setFixedSize(96, 96);
-    headerLayout->addWidget(m_avatarLabel, 0, 0, 2, 1, Qt::AlignLeft | Qt::AlignVCenter);
+    m_avatarLabel->setScaledContents(true);
+    avatarLayout->addWidget(m_avatarLabel, 0, Qt::AlignLeft | Qt::AlignTop);
+
+    m_avatarEditButton = new QPushButton(tr("����ͷ��"), headerWidget);
+    m_avatarEditButton->setObjectName("avatarEditButton");
+    m_avatarEditButton->setCursor(Qt::PointingHandCursor);
+    m_avatarEditButton->setEnabled(false);
+    avatarLayout->addWidget(m_avatarEditButton, 0, Qt::AlignHCenter);
+
+    headerLayout->addLayout(avatarLayout, 0, 0, 2, 1, Qt::AlignLeft | Qt::AlignVCenter);
 
     auto *titleLabel = new QLabel(tr("个人信息"), headerWidget);
     titleLabel->setObjectName("headerTitle");
@@ -114,6 +129,7 @@ ProfileDialog::ProfileDialog(ChatController *controller, QWidget *parent)
     mainLayout->addWidget(cardWidget, 1);
 
     connect(m_primaryButton, &QPushButton::clicked, this, &ProfileDialog::handlePrimaryAction);
+    connect(m_avatarEditButton, &QPushButton::clicked, this, &ProfileDialog::selectAvatarImage);
 
     auto profile = controller ? controller->profileDetails() : ProfileDetails{};
     applyProfileToFields(profile);
@@ -132,6 +148,19 @@ void ProfileDialog::handlePrimaryAction() {
     }
 }
 
+void ProfileDialog::selectAvatarImage() {
+    if (!m_isEditing) {
+        return;
+    }
+    const QString filePath = QFileDialog::getOpenFileName(
+        this, tr("ѡ��ͷ��ͼƬ"), QString(), tr("ͼƬ�ļ� (*.png *.jpg *.jpeg *.bmp)"));
+    if (filePath.isEmpty()) {
+        return;
+    }
+    m_pendingAvatarPath = filePath;
+    refreshAvatarPreview(m_pendingAvatarPath);
+}
+
 void ProfileDialog::updateEditState(bool editing) {
     m_isEditing = editing;
     for (auto *edit : std::as_const(m_editableFields)) {
@@ -141,6 +170,9 @@ void ProfileDialog::updateEditState(bool editing) {
     }
     if (m_genderCombo) {
         m_genderCombo->setEnabled(editing);
+    }
+    if (m_avatarEditButton) {
+        m_avatarEditButton->setEnabled(editing);
     }
     if (m_primaryButton) {
         m_primaryButton->setText(editing ? tr("保存") : tr("编辑"));
@@ -164,6 +196,9 @@ void ProfileDialog::saveProfile() {
     details.email = m_emailEdit->text().trimmed();
     details.version = m_versionEdit->text();
     details.ip = m_ipEdit->text();
+    if (!m_pendingAvatarPath.isEmpty()) {
+        details.avatarPath = m_pendingAvatarPath;
+    }
 
     m_controller->updateProfileDetails(details);
     applyProfileToFields(details);
@@ -171,6 +206,8 @@ void ProfileDialog::saveProfile() {
 }
 
 void ProfileDialog::applyProfileToFields(const ProfileDetails &profile) {
+    m_cachedProfile = profile;
+    m_pendingAvatarPath.clear();
     if (m_nameEdit) {
         m_nameEdit->setText(profile.name);
     }
@@ -202,10 +239,26 @@ void ProfileDialog::applyProfileToFields(const ProfileDetails &profile) {
     if (m_ipEdit) {
         m_ipEdit->setText(profile.ip);
     }
-    if (m_avatarLabel) {
-        m_avatarLabel->setText(resolveAvatarLetter(profile));
-    }
+    refreshAvatarPreview();
 }
+
+void ProfileDialog::refreshAvatarPreview(const QString &overridePath) {
+    if (!m_avatarLabel) {
+        return;
+    }
+    ProfileDetails descriptor = m_cachedProfile;
+    if (!overridePath.isEmpty()) {
+        descriptor.avatarPath = overridePath;
+    }
+    if (descriptor.name.isEmpty() && m_controller) {
+        descriptor.name = m_controller->localDisplayName();
+    }
+    const AvatarHelper::AvatarDescriptor avatarDesc = AvatarHelper::descriptorFromProfile(descriptor);
+    const int renderSize = qMax(40, qMin(m_avatarLabel->width(), m_avatarLabel->height()));
+    const QPixmap pixmap = AvatarHelper::createAvatarPixmap(avatarDesc, renderSize);
+    m_avatarLabel->setPixmap(pixmap);
+}
+
 
 void ProfileDialog::showEvent(QShowEvent *event) {
     QDialog::showEvent(event);
@@ -215,14 +268,3 @@ void ProfileDialog::showEvent(QShowEvent *event) {
     updateEditState(false);
 }
 
-QString ProfileDialog::resolveAvatarLetter(const ProfileDetails &profile) const {
-    QString baseName = profile.name.trimmed();
-    if (baseName.isEmpty() && m_controller) {
-        baseName = m_controller->localDisplayName().trimmed();
-    }
-    if (baseName.isEmpty()) {
-        baseName = QStringLiteral("E");
-    }
-    const QString letter = baseName.left(1).toUpper();
-    return letter.isEmpty() ? QStringLiteral("E") : letter;
-}

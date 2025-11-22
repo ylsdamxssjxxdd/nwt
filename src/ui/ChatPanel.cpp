@@ -1,10 +1,12 @@
 #include "ChatPanel.h"
 
+#include "AvatarHelper.h"
 #include "EmotionPicker.h"
 #include "EmojiImageHandler.h"
 #include "StyleHelper.h"
 #include "core/LanguageKeys.h"
 #include "core/LanguageManager.h"
+#include "core/SettingsTypes.h"
 
 #include <QDateTime>
 #include <QEvent>
@@ -206,6 +208,11 @@ void ChatPanel::setChatHeader(const QString &title, const QString &presence) {
     }
 }
 
+void ChatPanel::setLocalProfile(const ProfileDetails &profile) {
+    const AvatarHelper::AvatarDescriptor descriptor = AvatarHelper::descriptorFromProfile(profile);
+    m_localAvatar = AvatarHelper::createAvatarPixmap(descriptor, 40);
+}
+
 void ChatPanel::resetConversation() {
     if (!m_messageLayout) {
         return;
@@ -300,6 +307,23 @@ bool ChatPanel::eventFilter(QObject *watched, QEvent *event) {
     return QFrame::eventFilter(watched, event);
 }
 
+QPixmap ChatPanel::resolveAvatarPixmap(const QString &sender, bool outgoing) {
+    if (outgoing && !m_localAvatar.isNull()) {
+        return m_localAvatar;
+    }
+    const QString cacheKey = sender.trimmed();
+    if (!outgoing && !cacheKey.isEmpty() && m_peerAvatarCache.contains(cacheKey)) {
+        return m_peerAvatarCache.value(cacheKey);
+    }
+    AvatarHelper::AvatarDescriptor descriptor;
+    descriptor.displayName = sender;
+    const QPixmap pixmap = AvatarHelper::createAvatarPixmap(descriptor, 40);
+    if (!outgoing && !cacheKey.isEmpty()) {
+        m_peerAvatarCache.insert(cacheKey, pixmap);
+    }
+    return pixmap;
+}
+
 void ChatPanel::appendChatBubble(const QString &timestamp, const QString &sender, const QString &text, bool outgoing) {
     ensureChatAreaForNewEntry();
     if (!m_messageLayout) {
@@ -316,7 +340,14 @@ void ChatPanel::appendChatBubble(const QString &timestamp, const QString &sender
     avatar->setFixedSize(40, 40);
     avatar->setAlignment(Qt::AlignCenter);
     avatar->setTextFormat(Qt::PlainText);
-    avatar->setText(sender.left(1).toUpper());
+    avatar->setScaledContents(true);
+    const QPixmap avatarPixmap = resolveAvatarPixmap(sender, outgoing);
+    if (!avatarPixmap.isNull()) {
+        avatar->setPixmap(avatarPixmap);
+        avatar->setText(QString());
+    } else {
+        avatar->setText(sender.left(1).toUpper());
+    }
 
     auto *bubble = new QFrame(row);
     bubble->setObjectName(outgoing ? "bubbleSelf" : "bubblePeer");

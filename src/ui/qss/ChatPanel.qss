@@ -72,15 +72,9 @@
 #avatarPeer, #avatarSelf {
     min-width: 40px;
     min-height: 40px;
-    border-radius: 20px;
     border: none;
-    background: #fff;
-    font-weight: 600;
-    color: #65708c;
-}
-#avatarSelf {
-    background: #7ac85c;
-    color: #ffffff;
+    background: transparent;
+    padding: 0px;
 }
 #chatInputArea {
     background: #ffffff;

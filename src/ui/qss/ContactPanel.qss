@@ -8,19 +8,18 @@
     border-bottom: 1px solid #f4d98e;
 }
 #avatarLabel {
-    background: #4a90e2;
-    color: #ffffff;
-    border-radius: 10px;
-    font-size: 26px;
-    font-weight: 600;
-    border: 2px solid transparent;
+    background: transparent;
+    border: none;
+    border-radius: 44px;
+    padding: 0;
 }
 #avatarLabel:hover {
-    background: #5aa3ff;
-    border-color: rgba(255, 255, 255, 0.55);
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-radius: 44px;
 }
 #avatarLabel:pressed {
-    background: #3372c8;
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    border-radius: 44px;
 }
 #profileName {
     font-size: 18px;

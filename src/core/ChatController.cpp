@@ -576,6 +576,11 @@ void ChatController::updateProfileDetails(const ProfileDetails &details) {
     if (updated.department.isEmpty()) {
         updated.department = QStringLiteral("神经网络研究室");
     }
+    if (updated.avatarPath.isEmpty()) {
+        updated.avatarPath = m_settings.profile.avatarPath;
+    } else if (QFileInfo(updated.avatarPath).absoluteFilePath() != m_settings.profile.avatarPath) {
+        updated.avatarPath = storeAvatarImage(updated.avatarPath);
+    }
     m_settings.profile = updated;
     if (!updated.name.isEmpty()) {
         m_displayName = updated.name;
@@ -599,6 +604,37 @@ QString ChatController::dataDirectoryPath() const {
 QString ChatController::databaseFilePath() const {
     const QString dataDir = dataDirectoryPath();
     return QDir(dataDir).filePath(QStringLiteral("nwt.db"));
+}
+
+QString ChatController::avatarDirectoryPath() const {
+    QDir dir(dataDirectoryPath());
+    const QString folder = QStringLiteral("avatars");
+    if (!dir.exists(folder)) {
+        dir.mkpath(folder);
+    }
+    return dir.filePath(folder);
+}
+
+QString ChatController::storeAvatarImage(const QString &sourcePath) const {
+    QFileInfo info(sourcePath);
+    if (!info.exists() || !info.isFile()) {
+        return sourcePath;
+    }
+    const QString normalizedSource = info.absoluteFilePath();
+    const QString avatarDirPath = avatarDirectoryPath();
+    QDir avatarDir(avatarDirPath);
+    if (normalizedSource.startsWith(QDir::cleanPath(avatarDirPath))) {
+        return normalizedSource;
+    }
+    const QString extension = info.suffix().isEmpty() ? QStringLiteral("png") : info.suffix();
+    const QString targetName =
+        QStringLiteral("%1.%2").arg(QUuid::createUuid().toString(QUuid::WithoutBraces), extension);
+    const QString targetPath = avatarDir.filePath(targetName);
+    QFile::remove(targetPath);
+    if (QFile::copy(normalizedSource, targetPath)) {
+        return targetPath;
+    }
+    return normalizedSource;
 }
 
 void ChatController::loadSettings() {

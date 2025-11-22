@@ -40,6 +40,7 @@ set(SOURCES
     src/ui/ContactsSidebar.cpp
     src/ui/EmotionPicker.cpp
     src/ui/ChatPanel.cpp
+    src/ui/AvatarHelper.cpp
     src/ui/ui_resources.qrc
 )
 

@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QSqlQuery>
+#include <QSqlRecord>
 #include <QVariant>
 #include <limits>
 
@@ -243,6 +244,7 @@ PersistedState StorageManager::loadState() const {
             if (!gender.isEmpty()) {
                 profile.gender = gender;
             }
+            profile.avatarPath = query.value(QStringLiteral("avatar_path")).toString();
             const QString unit = query.value(QStringLiteral("unit")).toString();
             if (!unit.isEmpty()) {
                 profile.unit = unit;
@@ -552,6 +554,7 @@ void StorageManager::ensureSchema(QSqlDatabase &db) const {
         name TEXT,\
         signature TEXT,\
         gender TEXT,\
+        avatar_path TEXT,\
         unit TEXT,\
         department TEXT,\
         phone TEXT,\
@@ -560,6 +563,11 @@ void StorageManager::ensureSchema(QSqlDatabase &db) const {
         version TEXT,\
         ip TEXT\
     )"));
+
+    QSqlRecord profileRecord = db.record(QStringLiteral("profile_details"));
+    if (profileRecord.indexOf(QStringLiteral("avatar_path")) == -1) {
+        query.exec(QStringLiteral("ALTER TABLE profile_details ADD COLUMN avatar_path TEXT"));
+    }
 
     query.exec(QStringLiteral("CREATE TABLE IF NOT EXISTS app_state (\
         id INTEGER PRIMARY KEY CHECK(id = 1),\
@@ -693,11 +701,12 @@ void StorageManager::writeMailSettings(const AppSettings &settings, QSqlDatabase
 void StorageManager::writeProfile(const AppSettings &settings, QSqlDatabase &db) const {
     QSqlQuery query(db);
     const ProfileDetails &profile = settings.profile;
-    query.prepare(QStringLiteral("REPLACE INTO profile_details(id, name, signature, gender, unit, department, phone,"
-                                 " mobile, email, version, ip) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"));
+    query.prepare(QStringLiteral("REPLACE INTO profile_details(id, name, signature, gender, avatar_path, unit, department, phone,"
+                                 " mobile, email, version, ip) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"));
     query.addBindValue(profile.name);
     query.addBindValue(profile.signature);
     query.addBindValue(profile.gender);
+    query.addBindValue(profile.avatarPath);
     query.addBindValue(profile.unit);
     query.addBindValue(profile.department);
     query.addBindValue(profile.phone);

@@ -22,6 +22,10 @@ struct ProfileDetails {
     QString name;
     QString signature;
     QString gender;
+    /*!
+     * \brief avatarPath �û��Զ���ͷ��洢·����
+     */
+    QString avatarPath;
     QString unit = QStringLiteral(u"生物研究院");
     QString department = QStringLiteral(u"神经网络研究室");
     QString phone;

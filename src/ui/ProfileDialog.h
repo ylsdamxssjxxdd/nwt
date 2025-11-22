@@ -24,15 +24,17 @@ protected:
 
 private slots:
     void handlePrimaryAction();
+    void selectAvatarImage();
 
 private:
     void updateEditState(bool editing);
     void saveProfile();
     void applyProfileToFields(const ProfileDetails &profile);
-    QString resolveAvatarLetter(const ProfileDetails &profile) const;
+    void refreshAvatarPreview(const QString &overridePath = QString());
 
     QPointer<ChatController> m_controller;
     QLabel *m_avatarLabel = nullptr;
+    QPushButton *m_avatarEditButton = nullptr;
     QPushButton *m_primaryButton = nullptr;
     QVector<QLineEdit *> m_editableFields;
     QLineEdit *m_nameEdit = nullptr;
@@ -46,4 +48,6 @@ private:
     QLineEdit *m_versionEdit = nullptr;
     QLineEdit *m_ipEdit = nullptr;
     bool m_isEditing = false;
+    ProfileDetails m_cachedProfile;
+    QString m_pendingAvatarPath;
 };

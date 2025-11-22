@@ -7,12 +7,21 @@ ProfileDialog {
                                 stop:0 #ffd06b, stop:1 #f28b42);
 }
 #profileAvatar {
-    background: rgba(255,255,255,0.95);
-    border-radius: 18px;
-    color: #3f51b5;
-    font-size: 48px;
+    background: transparent;
+    border: none;
+}
+#avatarEditButton {
+    border-radius: 14px;
+    padding: 4px 18px;
+    color: #ffffff;
+    background-color: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.45);
     font-weight: 600;
-    border: 2px solid transparent;
+}
+#avatarEditButton:disabled {
+    color: rgba(255,255,255,0.6);
+    border-color: rgba(255,255,255,0.25);
+    background-color: rgba(255,255,255,0.1);
 }
 #headerTitle {
     font-size: 22px;

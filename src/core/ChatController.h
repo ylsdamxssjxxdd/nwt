@@ -76,6 +76,8 @@ signals:
 private:
     QString dataDirectoryPath() const;
     QString databaseFilePath() const;
+    QString avatarDirectoryPath() const;
+    QString storeAvatarImage(const QString &sourcePath) const;
     void loadSettings();
     void loadKnownPeers();
     void recordChatHistory(const QString &peerId, const QString &roleName, const QString &content,

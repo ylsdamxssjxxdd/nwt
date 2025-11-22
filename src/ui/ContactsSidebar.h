@@ -8,6 +8,7 @@ class QLineEdit;
 class QPushButton;
 class QStackedWidget;
 class QToolButton;
+class QPixmap;
 
 /*!
  * \brief ContactsSidebar 负责左侧联系人面板的 UI 构建与简单交互。
@@ -25,7 +26,7 @@ public:
 
     QListView *peerListView() const;
     void setProfileInfo(const QString &displayName, const QString &signature);
-    void setAvatarLetter(const QString &letter);
+    void setAvatarPixmap(const QPixmap &pixmap);
     void setPeerPlaceholderVisible(bool hasPeers);
 
 signals:
